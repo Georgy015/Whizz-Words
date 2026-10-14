@@ -1,4 +1,4 @@
-# Word Wizard
+# Whizz Words
 
 A cozy wizard word roguelite for the web, targeting [CrazyGames](https://www.crazygames.com).
 Build words from letter tiles, score `chips × mult`, and hit each round's target.

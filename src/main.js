@@ -162,7 +162,7 @@ function checkEnd() {
   if (state.status === 'won') {
     const last = state.roundIndex >= ROUND_TARGETS.length - 1;
     showOverlay(
-      last ? 'You are a true Word Wizard!' : 'Round cleared!',
+      last ? 'You are a true Whizz Words wizard!' : 'Round cleared!',
       last
         ? `You cleared all ${ROUND_TARGETS.length} rounds. The shop, charms and bosses come next.`
         : `You scored ${state.score} of ${state.target}. The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
