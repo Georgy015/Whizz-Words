@@ -17,6 +17,7 @@
         <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
       </div>
       <div class="counters">
+        <button class="counter help" id="btn-restart" title="Start over" aria-label="Start over">↺</button>
         <button class="counter help" id="btn-help" title="How to play" aria-label="How to play">?</button>
         <div class="counter" title="Spells left this round"><span class="icon">✦</span><span id="plays">4</span></div>
         <div class="counter" title="Discards left this round"><span class="icon">♻</span><span id="discards">3</span></div>
@@ -42,7 +43,7 @@
 
     <nav class="actions">
       <button class="btn secondary" id="btn-discard">Discard</button>
-      <button class="btn secondary" id="btn-shuffle" title="Shuffle hand">⟳</button>
+      <button class="btn secondary" id="btn-shuffle" title="Shuffle hand">Shuffle</button>
       <button class="btn primary" id="btn-cast">Cast</button>
     </nav>
 
@@ -55,7 +56,10 @@
       <div class="details" id="overlay-details">
         <h2 id="overlay-title"></h2>
         <p id="overlay-text"></p>
-        <button class="btn primary" id="overlay-btn"></button>
+        <div class="panel-actions">
+          <button class="btn secondary hidden" id="overlay-alt"></button>
+          <button class="btn primary" id="overlay-btn"></button>
+        </div>
       </div>
     </div>
   </div>

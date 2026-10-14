@@ -11,6 +11,7 @@ const els = {
   preview: $('preview'), chips: $('preview-chips'), mult: $('preview-mult'),
   spell: $('spell'), message: $('message'), hand: $('hand'), log: $('log'),
   cast: $('btn-cast'), discard: $('btn-discard'), shuffle: $('btn-shuffle'), help: $('btn-help'),
+  restart: $('btn-restart'), overlayAlt: $('overlay-alt'),
   coach: $('coach'), coachText: $('coach-text'), coachBtn: $('coach-btn'),
   overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'),
   overlayBtn: $('overlay-btn'), overlayCheer: $('overlay-cheer'), overlayDetails: $('overlay-details'),
@@ -291,8 +292,13 @@ function checkEnd() {
 
 // With cheer, "Well done!" pops in first and the round summary follows.
 let revealTimer = null;
-function showOverlay(title, text, button, onClick, { cheer = false } = {}) {
+function showOverlay(title, text, button, onClick, { cheer = false, alt = null } = {}) {
   clearTimeout(revealTimer);
+  els.overlayAlt.classList.toggle('hidden', !alt);
+  if (alt) {
+    els.overlayAlt.textContent = alt.label;
+    els.overlayAlt.onclick = () => { els.overlay.classList.add('hidden'); alt.onClick?.(); };
+  }
   els.overlayTitle.textContent = title;
   els.overlayText.textContent = text;
   els.overlayBtn.textContent = button;
@@ -321,7 +327,7 @@ const TUTORIAL_STEPS = [
   { text: 'Tap <b>C</b>, <b>A</b> and <b>T</b> to spell CAT, then tap <b>Cast</b>.', action: 'cast', word: 'cat', tiles: ['c', 'a', 't'] },
   { text: 'Nice! The small number on each tile is its value. Your score is <b>letter points × multiplier</b>, and the multiplier grows with longer words.', button: 'Next' },
   { text: '<b>X</b> and <b>Z</b> are tricky letters. Tap both, then tap <b>Discard</b> to swap them for new ones. You get 3 discards per round.', action: 'discard', tiles: ['x', 'z'] },
-  { text: 'Stuck for ideas? Tap <b>⟳</b> to shuffle your hand. Shuffling is free.', action: 'shuffle', tiles: [] },
+  { text: 'Stuck for ideas? Tap <b>Shuffle</b> to mix up your hand. Shuffling is free.', action: 'shuffle', tiles: [] },
   { text: 'Golden tiles hold two letters. Spell <b>THORN</b> with the <b>TH</b> tile. It counts as two letters, so THORN is a 5-letter word worth ×3.', action: 'cast', word: 'thorn', tiles: ['th', 'o', 'r', 'n'] },
   { text: `That’s it! Reach each round’s target before your casts run out. After round ${BONUS_AFTER_ROUND + 1} there’s a ${BONUS_SECONDS}-second bonus round that earns extra casts and discards.`, button: 'Start round 1', last: true },
 ];
@@ -403,6 +409,28 @@ els.cast.addEventListener('click', castForTutorial);
 els.discard.addEventListener('click', discard);
 els.shuffle.addEventListener('click', shuffle);
 els.help.addEventListener('click', startTutorial);
+
+// Start over asks first, inside the game, since a run is easy to lose by a stray tap.
+els.restart.addEventListener('click', () => {
+  if (busy) return;
+  showOverlay(
+    'Start over?',
+    tutorial
+      ? 'This skips the rest of the tutorial and starts a new run from round 1.'
+      : 'Your progress in this run will be lost, including any bonus rewards.',
+    'Start over',
+    () => {
+      if (tutorial) {
+        tutorial = null;
+        els.coach.classList.add('hidden');
+        try { localStorage.setItem('whizz-tutorial-done', '1'); } catch { /* storage unavailable */ }
+      }
+      stopTimer();
+      startRun();
+    },
+    { alt: { label: 'Keep playing' } },
+  );
+});
 
 loadDictionary()
   .then(() => {

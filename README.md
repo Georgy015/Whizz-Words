@@ -11,6 +11,7 @@ Build words from letter tiles, score `chips × mult`, and hit each round's targe
 - 5 rounds with targets 60 → 85 → 115 → 150 → 190
 - **Bonus round** after round 3: 60 seconds of unlimited casts. Finding 3 / 6 / 10 words earns extra casts and discards for the remaining rounds.
 - **Tutorial** on first visit (replay with the ? button): a scripted practice hand that teaches casting, discarding, shuffling and two-letter tiles
+- Start over (↺ in the header) restarts the run after an in-game confirmation
 - Tap/click tiles, or type on a keyboard (Enter casts, Backspace undoes, Esc clears)
 - Playtest shortcut: open the page with `#bonus` to jump straight to the bonus round
 

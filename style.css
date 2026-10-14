@@ -198,6 +198,7 @@ html, body {
   .cheer, .details.reveal { animation: none; }
 }
 .panel p { color: var(--muted); margin: 0 0 20px; line-height: 1.5; }
+.panel-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--night); color: var(--gold); font-style: italic; z-index: 20; }
 
 /* Wide, short screens (16:9 iframe on desktop) */
