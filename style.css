@@ -72,6 +72,26 @@ html, body {
   padding: 4px 10px; border-radius: 99px; font-size: 1rem;
 }
 .counter .icon { color: var(--violet); }
+.counter.help { color: var(--gold); font: inherit; font-weight: bold; cursor: pointer; }
+
+/* Tutorial coach */
+.coach {
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px)); z-index: 5;
+  background: linear-gradient(170deg, #34295a, var(--night-2));
+  border: 1px solid var(--violet); border-radius: 16px;
+  padding: 14px 18px; box-shadow: 0 10px 30px #0008;
+  display: flex; align-items: center; gap: 14px;
+}
+.coach.hidden { display: none; }
+.coach p { margin: 0; flex: 1; line-height: 1.45; }
+.coach b { color: var(--gold); }
+.btn.small { padding: 8px 16px; font-size: 1rem; flex: none; }
+.btn.hidden { display: none; }
+
+/* Bonus round timer */
+.goal-fill.timer { background: linear-gradient(90deg, var(--danger), var(--gold)); transition: width .1s linear; }
+.round.bonus { color: var(--danger); }
 
 /* Spell area */
 .spell {
@@ -107,7 +127,14 @@ html, body {
 .tile:hover { transform: translateY(-3px); }
 .tile:active { transform: translateY(1px); }
 .tile .value { position: absolute; right: 5px; bottom: 3px; font-size: calc(var(--tile) * .2); opacity: .7; }
-.tile.qu { font-size: calc(var(--tile) * .38); }
+.tile.duo {
+  font-size: calc(var(--tile) * .36);
+  background: linear-gradient(160deg, #fff3c4, #f6d77e 60%, #d9a944);
+  box-shadow: 0 4px 0 #a07428, 0 6px 14px #0007;
+}
+.tile.locked { opacity: .3; pointer-events: none; }
+.tile.hint, .btn.hint { animation: hint 1.2s ease-in-out infinite; }
+@keyframes hint { 50% { box-shadow: 0 4px 0 #a88a52, 0 0 0 4px var(--violet), 0 0 24px var(--violet); } }
 .tile.used { opacity: .25; transform: scale(.9); pointer-events: none; }
 .tile.enter { animation: drop-in .3s cubic-bezier(.2,.8,.2,1.3) backwards; }
 @keyframes drop-in { from { transform: translateY(-24px) scale(.6); opacity: 0; } }

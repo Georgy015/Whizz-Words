@@ -7,24 +7,25 @@ const words = readFileSync(new URL('../assets/words.txt', import.meta.url), 'utf
 const dict = new Set(words);
 const N = Number(process.argv[2] || 300);
 
-// Find the highest-scoring word buildable from the hand (Qu tile = "qu").
+// Find the highest-scoring word buildable from the hand. Two-letter tiles
+// make several spellings possible, so match recursively.
+function match(w, i, pool, ids) {
+  if (i === w.length) return ids;
+  for (let k = 0; k < pool.length; k++) {
+    const l = pool[k].letter;
+    if (w.startsWith(l, i)) {
+      const found = match(w, i + l.length, pool.filter((_, j) => j !== k), [...ids, pool[k].id]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function bestPlay(hand) {
   let best = null;
   for (const w of words) {
-    if (w.length > 9) continue;
-    const pool = [...hand];
-    const ids = [];
-    let i = 0;
-    let ok = true;
-    while (i < w.length) {
-      const want = w.startsWith('qu', i) ? 'qu' : w[i];
-      const k = pool.findIndex((t) => t.letter === want);
-      if (k < 0) { ok = false; break; }
-      ids.push(pool[k].id);
-      i += want.length;
-      pool.splice(k, 1);
-    }
-    if (!ok) continue;
+    const ids = match(w, 0, hand, []);
+    if (!ids) continue;
     const score = scoreTiles(ids.map((id) => hand.find((t) => t.id === id))).total;
     if (!best || score > best.score) best = { ids, score, w };
   }

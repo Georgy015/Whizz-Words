@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createRound, playWord, discardTiles, scoreTiles, createBag, createRng,
-  HAND_SIZE, BAG_COUNTS,
+  HAND_SIZE, BAG_COUNTS, bonusRewards, tilesFromLetters,
 } from '../src/game.js';
 
 const t = (letters) => letters.map((letter, id) => ({ id, letter }));
@@ -72,4 +72,44 @@ test('reaching the target wins, running out of plays loses', () => {
   lose.target = 1e9;
   for (let i = 0; i < 4; i++) playWord(lose, lose.hand.slice(0, 3).map((x) => x.id), () => true);
   assert.equal(lose.status, 'lost');
+});
+
+test('two-letter tiles score their value and count as two letters', () => {
+  const s = scoreTiles(t(['th', 'o', 'r', 'n']));
+  assert.equal(s.word, 'thorn');
+  assert.equal(s.chips, 5 + 3 + 10);
+  assert.equal(s.mult, 3);
+});
+
+test('extra casts and discards from the bonus round carry into a round', () => {
+  const r = createRound({ seed: 1, extraPlays: 1, extraDiscards: 2 });
+  assert.equal(r.playsLeft, 5);
+  assert.equal(r.discardsLeft, 5);
+});
+
+test('bonus round never runs out of tiles and rejects repeated words', () => {
+  const r = createRound({ seed: 1, mode: 'bonus' });
+  for (let i = 0; i < 40; i++) {
+    const ids = r.hand.slice(0, 3).map((x) => x.id);
+    const word = r.hand.slice(0, 3).map((x) => x.letter).join('');
+    const seen = r.usedWords.has(word);
+    const res = playWord(r, ids, () => true);
+    assert.equal(res.ok, !seen);
+    if (seen) discardTiles(r, ids);
+  }
+  assert.equal(r.hand.length, HAND_SIZE);
+  assert.equal(r.status, 'playing');
+  assert.ok(new Set(r.hand.map((x) => x.id)).size === HAND_SIZE);
+});
+
+test('bonus rewards stack by tier', () => {
+  assert.deepEqual(bonusRewards(2), { plays: 0, discards: 0 });
+  assert.deepEqual(bonusRewards(3), { plays: 0, discards: 1 });
+  assert.deepEqual(bonusRewards(6), { plays: 1, discards: 1 });
+  assert.deepEqual(bonusRewards(12), { plays: 2, discards: 2 });
+});
+
+test('a preset hand and bag are used as given', () => {
+  const r = createRound({ hand: tilesFromLetters(['c', 'a', 't']), bag: tilesFromLetters(['x', 'y', 'z', 'o', 'p'], 100) });
+  assert.deepEqual(r.hand.map((x) => x.letter), ['c', 'a', 't', 'p', 'o', 'z', 'y', 'x']);
 });

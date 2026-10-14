@@ -13,14 +13,20 @@
     <header class="top">
       <div class="round" id="round-label">Round 1</div>
       <div class="goal">
-        <div class="goal-text"><span id="score">0</span> / <span id="target">0</span></div>
+        <div class="goal-text" id="goal-text"><span id="score">0</span> / <span id="target">0</span></div>
         <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
       </div>
       <div class="counters">
+        <button class="counter help" id="btn-help" title="How to play" aria-label="How to play">?</button>
         <div class="counter" title="Spells left this round"><span class="icon">✦</span><span id="plays">4</span></div>
         <div class="counter" title="Discards left this round"><span class="icon">♻</span><span id="discards">3</span></div>
       </div>
     </header>
+
+    <div class="coach hidden" id="coach" role="dialog" aria-live="polite">
+      <p id="coach-text"></p>
+      <button class="btn primary small hidden" id="coach-btn">Next</button>
+    </div>
 
     <section class="spell" aria-label="Your spell">
       <div class="preview" id="preview">

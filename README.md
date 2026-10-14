@@ -3,13 +3,16 @@
 A cozy wizard word roguelite for the web, targeting [CrazyGames](https://www.crazygames.com).
 Build words from letter tiles, score `chips × mult`, and hit each round's target.
 
-## Status: M1, the core round
+## Status: M1+, a playable run
 
-- Hand of 8 letter tiles from a 56-tile bag (with a single **Qu** tile)
-- 4 casts and 3 discards per round
+- Hand of 8 tiles from a 61-tile bag, including golden two-letter tiles (**Qu, Th, Er, In, St, Ch**) that count as two letters
+- 4 casts and 3 discards per round, plus a free shuffle
 - Score = `(letter values + length bonus) × (word length − 2)`
-- 5 rounds with rising targets. There's no shop, charms or bosses yet (that's M2).
+- 5 rounds with targets 90 → 130 → 180 → 240 → 310
+- **Bonus round** after round 3: 60 seconds of unlimited casts. Finding 3 / 6 / 10 words earns extra casts and discards for the remaining rounds.
+- **Tutorial** on first visit (replay with the ? button): a scripted practice hand that teaches casting, discarding, shuffling and two-letter tiles
 - Tap/click tiles, or type on a keyboard (Enter casts, Backspace undoes, Esc clears)
+- Playtest shortcut: open the page with `#bonus` to jump straight to the bonus round
 
 ## Run it
 
