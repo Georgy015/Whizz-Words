@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createRound, playWord, discardTiles, scoreTiles, createBag, createRng,
-  HAND_SIZE, BAG_COUNTS, bonusRewards, tilesFromLetters,
+  HAND_SIZE, BAG_COUNTS, bonusRewards, tilesFromLetters, carryOver,
 } from '../src/game.js';
 
 const t = (letters) => letters.map((letter, id) => ({ id, letter }));
@@ -112,4 +112,13 @@ test('bonus rewards stack by tier', () => {
 test('a preset hand and bag are used as given', () => {
   const r = createRound({ hand: tilesFromLetters(['c', 'a', 't']), bag: tilesFromLetters(['x', 'y', 'z', 'o', 'p'], 100) });
   assert.deepEqual(r.hand.map((x) => x.letter), ['c', 'a', 't', 'p', 'o', 'z', 'y', 'x']);
+});
+
+test('surplus points carry over, capped at half the next target', () => {
+  assert.equal(carryOver(60, 60, 85), 0);
+  assert.equal(carryOver(80, 60, 85), 20);
+  assert.equal(carryOver(190, 60, 85), 42);
+  const r = createRound({ seed: 1, roundIndex: 1, startScore: 20 });
+  assert.equal(r.score, 20);
+  assert.equal(r.status, 'playing');
 });

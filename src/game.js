@@ -36,6 +36,14 @@ export const BONUS_TIERS = [
   { words: 10, discards: 1, plays: 1 },
 ];
 
+// Points above a round's target carry into the next round, capped at a
+// share of the next target so the next round is never won before it starts.
+export const CARRY_CAP = 0.5;
+
+export function carryOver(score, target, nextTarget) {
+  return Math.max(0, Math.min(score - target, Math.floor(nextTarget * CARRY_CAP)));
+}
+
 export function bonusRewards(wordCount) {
   return BONUS_TIERS.filter((t) => wordCount >= t.words).reduce(
     (sum, t) => ({ plays: sum.plays + t.plays, discards: sum.discards + t.discards }),
@@ -91,7 +99,7 @@ export function scoreTiles(tiles) {
 // mode 'bonus': endless casts and discards against the clock; no repeats.
 export function createRound({
   seed = Date.now(), roundIndex = 0, mode = 'round',
-  extraPlays = 0, extraDiscards = 0, hand = null, bag = null,
+  extraPlays = 0, extraDiscards = 0, startScore = 0, hand = null, bag = null,
 } = {}) {
   const rng = createRng(seed);
   const bonus = mode === 'bonus';
@@ -99,7 +107,7 @@ export function createRound({
     mode,
     roundIndex,
     target: bonus ? Infinity : ROUND_TARGETS[Math.min(roundIndex, ROUND_TARGETS.length - 1)],
-    score: 0,
+    score: startScore,
     playsLeft: bonus ? Infinity : PLAYS_PER_ROUND + extraPlays,
     discardsLeft: bonus ? Infinity : DISCARDS_PER_ROUND + extraDiscards,
     rng,

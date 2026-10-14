@@ -1,5 +1,5 @@
 import {
-  createRound, playWord, discardTiles, scoreTiles, tilesFromLetters, bonusRewards,
+  createRound, playWord, discardTiles, scoreTiles, tilesFromLetters, bonusRewards, carryOver,
   LETTER_VALUES, ROUND_TARGETS, BONUS_AFTER_ROUND, BONUS_SECONDS, BONUS_TIERS,
 } from './game.js';
 import { loadDictionary, isWord } from './dictionary.js';
@@ -23,7 +23,7 @@ let selected = []; // tile ids in spell order
 let freshIds = new Set(); // tiles that just arrived, for the drop-in animation
 let busy = false;
 let pendingKey = null; // second letter of a two-letter tile picked by keyboard
-let run = { extraPlays: 0, extraDiscards: 0 };
+let run = { extraPlays: 0, extraDiscards: 0, carry: 0 };
 let timer = null;
 let bonusEndsAt = 0;
 let tutorial = null; // { step } while the tutorial is running
@@ -34,7 +34,7 @@ const isBonus = () => state.mode === 'bonus';
 // ---------- Run flow ----------
 
 function startRun() {
-  run = { extraPlays: 0, extraDiscards: 0 };
+  run = { extraPlays: 0, extraDiscards: 0, carry: 0 };
   startRound(0);
 }
 
@@ -45,8 +45,10 @@ function startRound(roundIndex) {
     roundIndex,
     extraPlays: run.extraPlays,
     extraDiscards: run.extraDiscards,
+    startScore: run.carry,
   });
-  resetView('Tap letters to weave a word');
+  resetView(run.carry ? `+${run.carry} points carried over from last round` : 'Tap letters to weave a word');
+  run.carry = 0;
 }
 
 function startBonus() {
@@ -268,13 +270,15 @@ function checkEnd() {
   const last = state.roundIndex >= ROUND_TARGETS.length - 1;
   if (state.status === 'won') {
     const bonusNext = state.roundIndex === BONUS_AFTER_ROUND;
+    run.carry = last ? 0 : carryOver(state.score, state.target, ROUND_TARGETS[state.roundIndex + 1]);
+    const carryText = run.carry ? ` ${run.carry} extra points carry into the next round.` : '';
     showOverlay(
       last ? 'You are a true Whizz Words wizard!' : 'Round cleared!',
       last
         ? `You cleared all ${ROUND_TARGETS.length} rounds. The shop, charms and bosses come next.`
         : bonusNext
-          ? `You scored ${state.score} of ${state.target}. Next up: a ${BONUS_SECONDS}-second bonus round. Cast as many words as you can to earn extra casts and discards.`
-          : `You scored ${state.score} of ${state.target}. The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
+          ? `You scored ${state.score} of ${state.target}.${carryText} Next up: a ${BONUS_SECONDS}-second bonus round. Cast as many words as you can to earn extra casts and discards.`
+          : `You scored ${state.score} of ${state.target}.${carryText} The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
       last ? 'Play again' : bonusNext ? 'Start bonus round' : 'Next round',
       () => (last ? startRun() : bonusNext ? startBonus() : startRound(state.roundIndex + 1)),
       { cheer: true },
