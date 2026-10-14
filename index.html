@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Word Wizard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+
+  <main class="game" id="game">
+    <header class="top">
+      <div class="round" id="round-label">Round 1</div>
+      <div class="goal">
+        <div class="goal-text"><span id="score">0</span> / <span id="target">0</span></div>
+        <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
+      </div>
+      <div class="counters">
+        <div class="counter" title="Spells left this round"><span class="icon">✦</span><span id="plays">4</span></div>
+        <div class="counter" title="Discards left this round"><span class="icon">♻</span><span id="discards">3</span></div>
+      </div>
+    </header>
+
+    <section class="spell" aria-label="Your spell">
+      <div class="preview" id="preview">
+        <span class="chips" id="preview-chips">0</span>
+        <span class="times">×</span>
+        <span class="mult" id="preview-mult">0</span>
+      </div>
+      <div class="spell-slots" id="spell"></div>
+      <div class="message" id="message" role="status">Tap letters to weave a word</div>
+    </section>
+
+    <section class="hand" id="hand" aria-label="Your letters"></section>
+
+    <nav class="actions">
+      <button class="btn secondary" id="btn-discard">Discard</button>
+      <button class="btn secondary" id="btn-shuffle" title="Shuffle hand">⟳</button>
+      <button class="btn primary" id="btn-cast">Cast</button>
+    </nav>
+
+    <aside class="log" id="log" aria-label="Spells cast"></aside>
+  </main>
+
+  <div class="overlay hidden" id="overlay">
+    <div class="panel">
+      <h2 id="overlay-title"></h2>
+      <p id="overlay-text"></p>
+      <button class="btn primary" id="overlay-btn"></button>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">Opening the spellbook…</div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
