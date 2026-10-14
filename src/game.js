@@ -26,7 +26,7 @@ export const BAG_COUNTS = {
 const LENGTH_BONUS = [0, 0, 0, 0, 5, 10, 20, 35, 50, 70];
 
 // Targets for the five scored rounds. A bonus round sits after round 3.
-export const ROUND_TARGETS = [90, 130, 180, 240, 310];
+export const ROUND_TARGETS = [60, 85, 115, 150, 190];
 export const BONUS_AFTER_ROUND = 2; // zero-based: after the third round
 
 // Words found in the bonus round unlock these, cumulatively.

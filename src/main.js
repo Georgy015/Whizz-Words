@@ -13,7 +13,8 @@ const els = {
   cast: $('btn-cast'), discard: $('btn-discard'), shuffle: $('btn-shuffle'), help: $('btn-help'),
   coach: $('coach'), coachText: $('coach-text'), coachBtn: $('coach-btn'),
   overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'),
-  overlayBtn: $('overlay-btn'), loading: $('loading'),
+  overlayBtn: $('overlay-btn'), overlayCheer: $('overlay-cheer'), overlayDetails: $('overlay-details'),
+  loading: $('loading'),
 };
 
 let state;
@@ -88,6 +89,7 @@ function tickBonus() {
       : `You coined ${state.history.length} words. Find ${BONUS_TIERS[0].words} next time to earn a reward.`,
     `On to round ${BONUS_AFTER_ROUND + 2}`,
     () => startRound(BONUS_AFTER_ROUND + 1),
+    { cheer: parts.length > 0 },
   );
 }
 
@@ -274,24 +276,38 @@ function checkEnd() {
           : `You scored ${state.score} of ${state.target}. The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
       last ? 'Play again' : bonusNext ? 'Start bonus round' : 'Next round',
       () => (last ? startRun() : bonusNext ? startBonus() : startRound(state.roundIndex + 1)),
+      { cheer: true },
     );
   } else if (state.status === 'lost') {
     showOverlay(
       'The spell fizzled…',
-      `You reached ${state.score} of ${state.target} in round ${state.roundIndex + 1}.`,
+      `You reached ${state.score} of ${state.target} in round ${state.roundIndex + 1}.`
+        + (run.extraPlays || run.extraDiscards ? ' Your bonus rewards are lost, and the next run starts fresh.' : ''),
       'Try again',
       startRun,
     );
   }
 }
 
-function showOverlay(title, text, button, onClick) {
+// With cheer, "Well done!" pops in first and the round summary follows.
+let revealTimer = null;
+function showOverlay(title, text, button, onClick, { cheer = false } = {}) {
+  clearTimeout(revealTimer);
   els.overlayTitle.textContent = title;
   els.overlayText.textContent = text;
   els.overlayBtn.textContent = button;
   els.overlayBtn.onclick = () => { els.overlay.classList.add('hidden'); onClick(); };
+  els.overlayCheer.classList.toggle('hidden', !cheer);
+  els.overlayDetails.classList.remove('reveal');
+  els.overlayDetails.classList.toggle('waiting', cheer);
   els.overlay.classList.remove('hidden');
-  els.overlayBtn.focus();
+  const reveal = () => {
+    els.overlayDetails.classList.remove('waiting');
+    els.overlayDetails.classList.add('reveal');
+    els.overlayBtn.focus();
+  };
+  if (cheer) revealTimer = setTimeout(reveal, 900);
+  else reveal();
 }
 
 // ---------- Tutorial ----------

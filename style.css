@@ -183,6 +183,20 @@ html, body {
   box-shadow: 0 0 40px #9b7bff44;
 }
 .panel h2 { color: var(--gold); margin: 0 0 8px; }
+.cheer {
+  font-size: clamp(2.2rem, 9vw, 3rem); font-weight: bold; color: var(--gold);
+  text-shadow: 0 0 18px var(--gold-deep), 0 0 40px #9b7bff88;
+  margin-bottom: 12px;
+  animation: cheer-pop .6s cubic-bezier(.2,.8,.2,1.4);
+}
+.cheer.hidden { display: none; }
+@keyframes cheer-pop { from { transform: scale(.3) rotate(-6deg); opacity: 0; } }
+.details.waiting { visibility: hidden; }
+.details.reveal { animation: reveal .4s ease-out; }
+@keyframes reveal { from { transform: translateY(10px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cheer, .details.reveal { animation: none; }
+}
 .panel p { color: var(--muted); margin: 0 0 20px; line-height: 1.5; }
 .loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--night); color: var(--gold); font-style: italic; z-index: 20; }
 

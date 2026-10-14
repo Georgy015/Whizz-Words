@@ -8,7 +8,7 @@ Build words from letter tiles, score `chips × mult`, and hit each round's targe
 - Hand of 8 tiles from a 61-tile bag, including golden two-letter tiles (**Qu, Th, Er, In, St, Ch**) that count as two letters
 - 4 casts and 3 discards per round, plus a free shuffle
 - Score = `(letter values + length bonus) × (word length − 2)`
-- 5 rounds with targets 90 → 130 → 180 → 240 → 310
+- 5 rounds with targets 60 → 85 → 115 → 150 → 190
 - **Bonus round** after round 3: 60 seconds of unlimited casts. Finding 3 / 6 / 10 words earns extra casts and discards for the remaining rounds.
 - **Tutorial** on first visit (replay with the ? button): a scripted practice hand that teaches casting, discarding, shuffling and two-letter tiles
 - Tap/click tiles, or type on a keyboard (Enter casts, Backspace undoes, Esc clears)
