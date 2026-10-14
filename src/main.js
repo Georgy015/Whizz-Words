@@ -13,7 +13,7 @@ const els = {
   preview: $('preview'), chips: $('preview-chips'), mult: $('preview-mult'),
   spell: $('spell'), message: $('message'), hand: $('hand'), log: $('log'),
   cast: $('btn-cast'), discard: $('btn-discard'), shuffle: $('btn-shuffle'), help: $('btn-help'),
-  restart: $('btn-restart'), overlayAlt: $('overlay-alt'),
+  restart: $('btn-restart'), pause: $('btn-pause'), overlayAlt: $('overlay-alt'),
   coach: $('coach'), coachText: $('coach-text'), coachBtn: $('coach-btn'),
   overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'),
   overlayBtn: $('overlay-btn'), overlayCheer: $('overlay-cheer'), overlayDetails: $('overlay-details'),
@@ -80,6 +80,22 @@ function resetView(message) {
 function stopTimer() {
   if (timer) clearInterval(timer);
   timer = null;
+  pausedLeft = null;
+}
+
+// Freeze and unfreeze the bonus clock (pause menu, start-over prompt, tab hidden).
+let pausedLeft = null;
+function pauseClock() {
+  if (!timer) return;
+  clearInterval(timer);
+  timer = null;
+  pausedLeft = Math.max(0, bonusEndsAt - Date.now());
+}
+function resumeClock() {
+  if (pausedLeft === null) return;
+  bonusEndsAt = Date.now() + pausedLeft;
+  pausedLeft = null;
+  timer = setInterval(tickBonus, 100);
 }
 
 function tickBonus() {
@@ -333,7 +349,10 @@ function checkEnd() {
           : `You scored ${state.score} of ${state.target}.${carryText} The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
       last ? 'Play again' : 'Visit the shop',
       () => (last ? startRun() : openShop(next)),
-      { cheer: true },
+      {
+        cheer: true,
+        alt: last ? null : { label: bonusNext ? 'Continue to bonus round' : 'Continue to next round', onClick: next },
+      },
     );
   } else if (state.status === 'lost') {
     showOverlay(
@@ -417,10 +436,31 @@ function renderShop() {
   els.shopReroll.textContent = `Reroll $${shop.rerollCost}`;
   els.shopReroll.disabled = run.coins < shop.rerollCost;
   const owned = run.charms.map(charmById);
-  els.shopOwned.textContent = owned.length
-    ? `Your charms (${owned.length}/${CHARM_SLOTS}): ${owned.map((c) => c.name).join(', ')}`
+  const heading = document.createElement('p');
+  heading.className = 'owned-heading';
+  heading.textContent = owned.length
+    ? `Your charms (${owned.length}/${CHARM_SLOTS})${full ? '. Sell one to make room.' : ''}`
     : `Charm slots: 0/${CHARM_SLOTS}. Charms last for the whole run.`;
+  els.shopOwned.replaceChildren(heading, ...owned.map((c) => {
+    const row = document.createElement('div');
+    row.className = 'owned-row';
+    row.innerHTML = `<span class="glyph">${c.glyph}</span><span class="owned-name" title="${c.text}">${c.name}</span>`;
+    const sell = document.createElement('button');
+    sell.className = 'btn secondary small';
+    sell.textContent = `Sell $${sellPrice(c)}`;
+    sell.addEventListener('click', () => {
+      run.coins += sellPrice(c);
+      run.charms = run.charms.filter((id) => id !== c.id);
+      renderShop();
+      renderCharms();
+    });
+    row.appendChild(sell);
+    return row;
+  }));
 }
+
+// Selling refunds half the price, rounded down (at least $1).
+const sellPrice = (c) => Math.max(1, Math.floor(c.price / 2));
 
 els.shopReroll.addEventListener('click', () => {
   if (run.coins < shop.rerollCost) return;
@@ -534,6 +574,7 @@ els.help.addEventListener('click', startTutorial);
 // Start over asks first, inside the game, since a run is easy to lose by a stray tap.
 els.restart.addEventListener('click', () => {
   if (busy) return;
+  pauseClock();
   showOverlay(
     'Start over?',
     tutorial
@@ -549,8 +590,22 @@ els.restart.addEventListener('click', () => {
       stopTimer();
       startRun();
     },
-    { alt: { label: 'Keep playing' } },
+    { alt: { label: 'Keep playing', onClick: resumeClock } },
   );
+});
+
+// Pause: freezes the bonus clock and covers the board until Resume.
+function showPause() {
+  if (busy || !els.overlay.classList.contains('hidden') || !els.shop.classList.contains('hidden')) return;
+  pauseClock();
+  showOverlay('Paused', 'Your game is on hold. Take your time.', 'Resume', resumeClock, {
+    alt: { label: 'How to play', onClick: startTutorial },
+  });
+}
+els.pause.addEventListener('click', showPause);
+// Leaving the tab pauses a running bonus clock.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && timer) showPause();
 });
 
 loadDictionary()

@@ -14,7 +14,8 @@ Build words from letter tiles, score `chips × mult`, and hit each round's targe
 - **Spell Shop** after every cleared round: 3 random charms, reroll for $1 (+$1 each time)
 - **15 charms**, up to 5 at once, kept for the whole run (`src/charms.js`)
 - **Bonus rounds** after rounds 3 and 6: 60 seconds of unlimited casts. 3 / 6 / 10 words earn extra casts and discards for the rest of the run.
-- **Tutorial** on first visit (replay with ?), **Start over** with ↺
+- **Tutorial** on first visit (replay with ?), **Start over** with ↺, **Pause** with ❚❚ (also freezes the bonus clock, and pauses automatically when you leave the tab)
+- After a win: **Continue to next round** or **Visit the shop**; in the shop you can **sell** a charm for half its price to free a slot
 - Tap/click tiles, or type on a keyboard (Enter casts, Backspace undoes, Esc clears)
 - Playtest shortcuts: open the page with `#bonus` to jump to a bonus round, or `#shop` to start with $20 in the shop
 
