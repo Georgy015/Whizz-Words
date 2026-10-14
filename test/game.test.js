@@ -122,3 +122,69 @@ test('surplus points carry over, capped at half the next target', () => {
   assert.equal(r.score, 20);
   assert.equal(r.status, 'playing');
 });
+
+// ---------- Charms and coins ----------
+import { CHARMS, charmById, shopOffers } from '../src/charms.js';
+import { roundCoins, castContext, ROUND_TARGETS, BONUS_AFTER } from '../src/game.js';
+
+const charm = (id) => [charmById(id)];
+
+test('every charm has a name, glyph, price and description', () => {
+  assert.equal(CHARMS.length, 15);
+  for (const c of CHARMS) {
+    assert.ok(c.id && c.name && c.glyph && c.text && c.price > 0, c.id);
+  }
+  assert.equal(new Set(CHARMS.map((c) => c.id)).size, CHARMS.length);
+});
+
+test('charm hooks add chips, add mult, then multiply', () => {
+  // CAT: 5 chips × 1 mult. Short & Sweet +15 chips, Vowel Hunter +1 mult.
+  const s = scoreTiles(t(['c', 'a', 't']), { charms: [charmById('short-sweet'), charmById('vowel-hunter')] });
+  assert.equal(s.chips, 20);
+  assert.equal(s.mult, 2);
+  assert.equal(s.total, 40);
+  assert.deepEqual(s.fired.map((f) => f.id), ['short-sweet', 'vowel-hunter']);
+  // Bookworm only fires on 6+ letters.
+  assert.equal(scoreTiles(t(['c', 'a', 't']), { charms: charm('bookworm') }).fired.length, 0);
+  assert.equal(scoreTiles(t(['w', 'i', 'z', 'a', 'r', 'd']), { charms: charm('bookworm') }).mult, 8);
+});
+
+test('situational charms read the cast context', () => {
+  const tiles = t(['n', 'o', 'o', 'n']);
+  assert.equal(scoreTiles(tiles, { charms: charm('palindrome') }).mult, 10);
+  assert.equal(scoreTiles(tiles, { charms: charm('twin-letters') }).mult, 6);
+  assert.equal(scoreTiles(tiles, { charms: charm('last-gasp'), last: true }).mult, 6);
+  assert.equal(scoreTiles(tiles, { charms: charm('last-gasp'), last: false }).mult, 2);
+  assert.equal(scoreTiles(tiles, { charms: charm('hoarder'), coins: 7 }).mult, 4);
+  assert.equal(scoreTiles(tiles, { charms: charm('opening-spell'), first: true }).chips, 4 + 5 + 25);
+});
+
+test('cast context knows the first and last cast of a round', () => {
+  const r = createRound({ seed: 1 });
+  assert.deepEqual(castContext(r), { charms: [], coins: 0, first: true, last: false });
+  r.playsLeft = 1;
+  assert.equal(castContext(r).last, true);
+});
+
+test('clearing a round pays $3 plus $1 per unused cast, plus charm coins', () => {
+  const r = createRound({ seed: 1 });
+  r.playsLeft = 2;
+  r.discardsLeft = 3;
+  assert.equal(roundCoins(r), 5);
+  assert.equal(roundCoins(r, charm('penny-pincher')), 8);
+});
+
+test('shop offers distinct charms the player does not own', () => {
+  const rng = createRng(3);
+  const owned = CHARMS.slice(0, 13).map((c) => c.id);
+  const offers = shopOffers(rng, owned);
+  assert.equal(offers.length, 2);
+  assert.ok(offers.every((o) => !owned.includes(o.id)));
+  assert.equal(new Set(shopOffers(createRng(9), []).map((o) => o.id)).size, 3);
+});
+
+test('the run has eight rounds with bonus rounds after rounds 3 and 6', () => {
+  assert.equal(ROUND_TARGETS.length, 8);
+  assert.deepEqual(BONUS_AFTER, [2, 5]);
+  assert.ok(ROUND_TARGETS.every((x, i) => i === 0 || x > ROUND_TARGETS[i - 1]));
+});

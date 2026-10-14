@@ -24,6 +24,11 @@
       </div>
     </header>
 
+    <section class="charmbar" aria-label="Your charms">
+      <div class="charms" id="charms"></div>
+      <div class="coins" id="coins" title="Coins">$0</div>
+    </section>
+
     <div class="coach hidden" id="coach" role="dialog" aria-live="polite">
       <p id="coach-text"></p>
       <button class="btn primary small hidden" id="coach-btn">Next</button>
@@ -61,6 +66,19 @@
           <button class="btn primary" id="overlay-btn"></button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="shop">
+    <div class="panel shop-panel" role="dialog" aria-labelledby="shop-title">
+      <h2 id="shop-title">The Spell Shop</h2>
+      <p class="shop-sub">You have <b id="shop-coins">$0</b> to spend.</p>
+      <div class="offers" id="offers"></div>
+      <div class="panel-actions">
+        <button class="btn secondary" id="shop-reroll">Reroll $1</button>
+        <button class="btn primary" id="shop-leave">Continue</button>
+      </div>
+      <p class="shop-owned" id="shop-owned"></p>
     </div>
   </div>
 

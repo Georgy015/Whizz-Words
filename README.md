@@ -3,18 +3,20 @@
 A cozy wizard word roguelite for the web, targeting [CrazyGames](https://www.crazygames.com).
 Build words from letter tiles, score `chips × mult`, and hit each round's target.
 
-## Status: M1+, a playable run
+## Status: M2 in progress, shop and charms
 
+- **8 rounds** with targets 60 → 85 → 115 → 150 → 190 → 240 → 300 → 370
 - Hand of 8 tiles from a 61-tile bag, including golden two-letter tiles (**Qu, Th, Er, In, St, Ch**) that count as two letters
 - 4 casts and 3 discards per round, plus a free shuffle
-- Score = `(letter values + length bonus) × (word length − 2)`
-- 5 rounds with targets 60 → 85 → 115 → 150 → 190
+- Score = `(letter values + length bonus) × (word length − 2)`, then charms
 - Points above a round's target carry into the next round, capped at half of its target
-- **Bonus round** after round 3: 60 seconds of unlimited casts. Finding 3 / 6 / 10 words earns extra casts and discards for the remaining rounds.
-- **Tutorial** on first visit (replay with the ? button): a scripted practice hand that teaches casting, discarding, shuffling and two-letter tiles
-- Start over (↺ in the header) restarts the run after an in-game confirmation
+- **Coins:** clearing a round pays $3 + $1 per unused cast
+- **Spell Shop** after every cleared round: 3 random charms, reroll for $1 (+$1 each time)
+- **15 charms**, up to 5 at once, kept for the whole run (`src/charms.js`)
+- **Bonus rounds** after rounds 3 and 6: 60 seconds of unlimited casts. 3 / 6 / 10 words earn extra casts and discards for the rest of the run.
+- **Tutorial** on first visit (replay with ?), **Start over** with ↺
 - Tap/click tiles, or type on a keyboard (Enter casts, Backspace undoes, Esc clears)
-- Playtest shortcut: open the page with `#bonus` to jump straight to the bonus round
+- Playtest shortcuts: open the page with `#bonus` to jump to a bonus round, or `#shop` to start with $20 in the shop
 
 ## Run it
 
@@ -30,11 +32,12 @@ npm run sim        # bot plays many rounds and reports win rate per target
 
 | Path | What |
 |---|---|
-| `src/game.js` | Pure game rules (no DOM): bag, scoring, rounds, seeded RNG |
+| `src/game.js` | Pure game rules (no DOM): bag, scoring, rounds, coins, seeded RNG |
+| `src/charms.js` | Charm definitions, charm scoring and shop offers |
 | `src/main.js` | UI, input and animations |
 | `src/dictionary.js` | Loads the word list into a `Set` |
 | `assets/words.txt` | ENABLE word list (public domain), 3–9 letter words |
-| `tools/sim.mjs` | Balance simulation |
+| `tools/sim.mjs` | Balance simulation: full runs with and without charms |
 
 ## Roadmap
 

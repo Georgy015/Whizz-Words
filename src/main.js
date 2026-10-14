@@ -1,7 +1,9 @@
 import {
   createRound, playWord, discardTiles, scoreTiles, tilesFromLetters, bonusRewards, carryOver,
-  LETTER_VALUES, ROUND_TARGETS, BONUS_AFTER_ROUND, BONUS_SECONDS, BONUS_TIERS,
+  castContext, roundCoins, createRng,
+  LETTER_VALUES, ROUND_TARGETS, BONUS_AFTER, BONUS_SECONDS, BONUS_TIERS,
 } from './game.js';
+import { CHARM_SLOTS, charmById, shopOffers } from './charms.js';
 import { loadDictionary, isWord } from './dictionary.js';
 
 const $ = (id) => document.getElementById(id);
@@ -15,7 +17,9 @@ const els = {
   coach: $('coach'), coachText: $('coach-text'), coachBtn: $('coach-btn'),
   overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'),
   overlayBtn: $('overlay-btn'), overlayCheer: $('overlay-cheer'), overlayDetails: $('overlay-details'),
-  loading: $('loading'),
+  loading: $('loading'), charms: $('charms'), coins: $('coins'),
+  shop: $('shop'), shopCoins: $('shop-coins'), offers: $('offers'), shopOwned: $('shop-owned'),
+  shopReroll: $('shop-reroll'), shopLeave: $('shop-leave'),
 };
 
 let state;
@@ -23,18 +27,25 @@ let selected = []; // tile ids in spell order
 let freshIds = new Set(); // tiles that just arrived, for the drop-in animation
 let busy = false;
 let pendingKey = null; // second letter of a two-letter tile picked by keyboard
-let run = { extraPlays: 0, extraDiscards: 0, carry: 0 };
+let run = newRun();
 let timer = null;
 let bonusEndsAt = 0;
 let tutorial = null; // { step } while the tutorial is running
 
 const fmt = (n) => (n === Infinity ? '∞' : n);
+
+function newRun() {
+  return { extraPlays: 0, extraDiscards: 0, carry: 0, coins: 0, charms: [] };
+}
+// The charms in play (none during the tutorial).
+const activeCharms = () => (tutorial ? [] : run.charms.map(charmById));
+const charmSum = (key) => activeCharms().reduce((s, c) => s + (c[key] || 0), 0);
 const isBonus = () => state.mode === 'bonus';
 
 // ---------- Run flow ----------
 
 function startRun() {
-  run = { extraPlays: 0, extraDiscards: 0, carry: 0 };
+  run = newRun();
   startRound(0);
 }
 
@@ -43,16 +54,16 @@ function startRound(roundIndex) {
   state = createRound({
     seed: (Date.now() ^ (roundIndex * 7919)) >>> 0,
     roundIndex,
-    extraPlays: run.extraPlays,
-    extraDiscards: run.extraDiscards,
+    extraPlays: run.extraPlays + charmSum('extraPlays'),
+    extraDiscards: run.extraDiscards + charmSum('extraDiscards'),
     startScore: run.carry,
   });
   resetView(run.carry ? `+${run.carry} points carried over from last round` : 'Tap letters to weave a word');
   run.carry = 0;
 }
 
-function startBonus() {
-  state = createRound({ seed: Date.now() >>> 0, mode: 'bonus', roundIndex: BONUS_AFTER_ROUND });
+function startBonus(afterIndex) {
+  state = createRound({ seed: Date.now() >>> 0, mode: 'bonus', roundIndex: afterIndex });
   bonusEndsAt = Date.now() + BONUS_SECONDS * 1000;
   timer = setInterval(tickBonus, 100);
   resetView(nextTierText(0));
@@ -90,8 +101,8 @@ function tickBonus() {
     parts.length
       ? `You coined ${state.history.length} words and earned ${parts.join(' and ')} for every remaining round.`
       : `You coined ${state.history.length} words. Find ${BONUS_TIERS[0].words} next time to earn a reward.`,
-    `On to round ${BONUS_AFTER_ROUND + 2}`,
-    () => startRound(BONUS_AFTER_ROUND + 1),
+    `On to round ${state.roundIndex + 2}`,
+    ((next) => () => startRound(next))(state.roundIndex + 1),
     { cheer: parts.length > 0 },
   );
 }
@@ -151,7 +162,7 @@ function render() {
   const tiles = selectedTiles();
   const word = tiles.map((t) => t.letter).join('');
   if (tiles.length > 0) {
-    const s = scoreTiles(tiles);
+    const s = scoreTiles(tiles, castContext(state, activeCharms(), run.coins));
     els.chips.textContent = s.chips;
     els.mult.textContent = s.mult;
     els.preview.classList.toggle('valid', word.length >= 3 && isWord(word));
@@ -169,11 +180,45 @@ function render() {
   els.discard.classList.toggle('hint', Boolean(step && step.action === 'discard' && tiles.length === step.tiles.length));
   els.shuffle.classList.toggle('hint', Boolean(step && step.action === 'shuffle'));
 
+  renderCharms();
+
   els.log.replaceChildren(...state.history.map((h) => {
     const s = document.createElement('span');
     s.innerHTML = `${h.word.toUpperCase()} <b>${h.total}</b>`;
     return s;
   }));
+}
+
+function renderCharms() {
+  const owned = activeCharms();
+  const slots = [];
+  for (let i = 0; i < CHARM_SLOTS; i++) {
+    const c = owned[i];
+    const b = document.createElement('button');
+    b.className = c ? 'charm' : 'charm empty';
+    if (c) {
+      b.dataset.id = c.id;
+      b.innerHTML = `<span class="glyph">${c.glyph}</span><span class="name">${c.name}</span>`;
+      b.title = `${c.name}: ${c.text}`;
+      b.addEventListener('click', () => setMessage(`${c.name}: ${c.text}`));
+    } else {
+      b.setAttribute('aria-label', 'Empty charm slot');
+      b.addEventListener('click', () => setMessage('Clear rounds to earn coins, then buy charms in the shop'));
+    }
+    slots.push(b);
+  }
+  els.charms.replaceChildren(...slots);
+  els.coins.textContent = `$${run.coins}`;
+}
+
+function pulseCharms(fired) {
+  for (const f of fired) {
+    const el = els.charms.querySelector(`[data-id="${f.id}"]`);
+    if (!el) continue;
+    el.classList.remove('fired');
+    void el.offsetWidth;
+    el.classList.add('fired');
+  }
 }
 
 function setMessage(text, kind = '') {
@@ -198,7 +243,7 @@ function toggle(id) {
 function cast() {
   if (busy || selected.length === 0 || els.cast.disabled) return;
   const before = new Set(state.hand.map((t) => t.id));
-  const res = playWord(state, selected, isWord);
+  const res = playWord(state, selected, isWord, { charms: activeCharms(), coins: run.coins });
   if (!res.ok) {
     const msg = {
       'too-short': 'Spells need at least 3 letters',
@@ -214,12 +259,14 @@ function cast() {
   busy = true;
   els.spell.querySelectorAll('.tile').forEach((t) => t.classList.add('cast-out'));
   floatText(`+${result.total}`);
+  const charmNote = result.fired.map((f) => `${charmById(f.id).name} ${f.label}`).join(', ');
   setMessage(
     isBonus()
       ? `${result.word.toUpperCase()}! ${nextTierText(state.history.length)}`
-      : `${result.word.toUpperCase()}: ${result.chips} × ${result.mult}`,
+      : `${result.word.toUpperCase()}: ${result.chips} × ${result.mult}${charmNote ? ` (${charmNote})` : ''}`,
     'good',
   );
+  pulseCharms(result.fired);
 
   setTimeout(() => {
     selected = [];
@@ -269,18 +316,23 @@ function checkEnd() {
   if (isBonus()) return;
   const last = state.roundIndex >= ROUND_TARGETS.length - 1;
   if (state.status === 'won') {
-    const bonusNext = state.roundIndex === BONUS_AFTER_ROUND;
+    const bonusNext = BONUS_AFTER.includes(state.roundIndex);
     run.carry = last ? 0 : carryOver(state.score, state.target, ROUND_TARGETS[state.roundIndex + 1]);
-    const carryText = run.carry ? ` ${run.carry} extra points carry into the next round.` : '';
+    const earned = roundCoins(state, activeCharms());
+    run.coins += earned;
+    renderCharms();
+    const carryText = (run.carry ? ` ${run.carry} extra points carry into the next round.` : '') + ` You earned $${earned}.`;
+    const index = state.roundIndex;
+    const next = bonusNext ? () => startBonus(index) : () => startRound(index + 1);
     showOverlay(
       last ? 'You are a true Whizz Words wizard!' : 'Round cleared!',
       last
-        ? `You cleared all ${ROUND_TARGETS.length} rounds. The shop, charms and bosses come next.`
+        ? `You cleared all ${ROUND_TARGETS.length} rounds. Boss rounds come next.`
         : bonusNext
-          ? `You scored ${state.score} of ${state.target}.${carryText} Next up: a ${BONUS_SECONDS}-second bonus round. Cast as many words as you can to earn extra casts and discards.`
+          ? `You scored ${state.score} of ${state.target}.${carryText} After the shop: a ${BONUS_SECONDS}-second bonus round. Cast as many words as you can to earn extra casts and discards.`
           : `You scored ${state.score} of ${state.target}.${carryText} The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
-      last ? 'Play again' : bonusNext ? 'Start bonus round' : 'Next round',
-      () => (last ? startRun() : bonusNext ? startBonus() : startRound(state.roundIndex + 1)),
+      last ? 'Play again' : 'Visit the shop',
+      () => (last ? startRun() : openShop(next)),
       { cheer: true },
     );
   } else if (state.status === 'lost') {
@@ -320,6 +372,71 @@ function showOverlay(title, text, button, onClick, { cheer = false, alt = null }
   else reveal();
 }
 
+// ---------- Shop ----------
+
+let shop = null; // { offers, rerollCost, onLeave, rng }
+
+function openShop(onLeave) {
+  const rng = createRng(Date.now() >>> 0);
+  shop = { rng, offers: shopOffers(rng, run.charms), rerollCost: 1, onLeave };
+  renderShop();
+  els.shop.classList.remove('hidden');
+  els.shopLeave.focus();
+}
+
+function renderShop() {
+  const full = run.charms.length >= CHARM_SLOTS;
+  els.shopCoins.textContent = `$${run.coins}`;
+  els.offers.replaceChildren(...shop.offers.map((c) => {
+    const card = document.createElement('div');
+    card.className = 'offer';
+    const afford = run.coins >= c.price;
+    card.innerHTML = `<span class="glyph">${c.glyph}</span>
+      <div class="offer-text"><b>${c.name}</b><span>${c.text}</span></div>`;
+    const buy = document.createElement('button');
+    buy.className = 'btn primary small';
+    buy.textContent = `Buy $${c.price}`;
+    buy.disabled = !afford || full;
+    buy.title = full ? 'Your charm slots are full' : afford ? '' : 'Not enough coins';
+    buy.addEventListener('click', () => {
+      run.coins -= c.price;
+      run.charms.push(c.id);
+      shop.offers = shop.offers.filter((o) => o.id !== c.id);
+      renderShop();
+      renderCharms();
+    });
+    card.appendChild(buy);
+    return card;
+  }));
+  if (shop.offers.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'offers-empty';
+    p.textContent = 'Sold out. Reroll for new charms.';
+    els.offers.appendChild(p);
+  }
+  els.shopReroll.textContent = `Reroll $${shop.rerollCost}`;
+  els.shopReroll.disabled = run.coins < shop.rerollCost;
+  const owned = run.charms.map(charmById);
+  els.shopOwned.textContent = owned.length
+    ? `Your charms (${owned.length}/${CHARM_SLOTS}): ${owned.map((c) => c.name).join(', ')}`
+    : `Charm slots: 0/${CHARM_SLOTS}. Charms last for the whole run.`;
+}
+
+els.shopReroll.addEventListener('click', () => {
+  if (run.coins < shop.rerollCost) return;
+  run.coins -= shop.rerollCost;
+  shop.rerollCost += 1;
+  shop.offers = shopOffers(shop.rng, run.charms);
+  renderShop();
+});
+
+els.shopLeave.addEventListener('click', () => {
+  els.shop.classList.add('hidden');
+  const { onLeave } = shop;
+  shop = null;
+  onLeave();
+});
+
 // ---------- Tutorial ----------
 
 // A fixed practice hand. Tiles are drawn from the end of the bag.
@@ -333,7 +450,7 @@ const TUTORIAL_STEPS = [
   { text: '<b>X</b> and <b>Z</b> are tricky letters. Tap both, then tap <b>Discard</b> to swap them for new ones. You get 3 discards per round.', action: 'discard', tiles: ['x', 'z'] },
   { text: 'Stuck for ideas? Tap <b>Shuffle</b> to mix up your hand. Shuffling is free.', action: 'shuffle', tiles: [] },
   { text: 'Golden tiles hold two letters. Spell <b>THORN</b> with the <b>TH</b> tile. It counts as two letters, so THORN is a 5-letter word worth ×3.', action: 'cast', word: 'thorn', tiles: ['th', 'o', 'r', 'n'] },
-  { text: `That’s it! Reach each round’s target before your casts run out. After round ${BONUS_AFTER_ROUND + 1} there’s a ${BONUS_SECONDS}-second bonus round that earns extra casts and discards.`, button: 'Start round 1', last: true },
+  { text: `That’s it! Reach each round’s target before your casts run out. Cleared rounds earn coins to spend on charms in the shop. After rounds ${BONUS_AFTER[0] + 1} and ${BONUS_AFTER[1] + 1} there’s a ${BONUS_SECONDS}-second bonus round that earns extra casts and discards.`, button: 'Start round 1', last: true },
 ];
 
 function startTutorial() {
@@ -393,7 +510,7 @@ els.coachBtn.addEventListener('click', () => advanceTutorial('button'));
 
 // Desktop keyboard support: type letters, Backspace, Enter to cast.
 document.addEventListener('keydown', (e) => {
-  if (!state || busy || !els.overlay.classList.contains('hidden')) return;
+  if (!state || busy || !els.overlay.classList.contains('hidden') || !els.shop.classList.contains('hidden')) return;
   if (e.key === 'Enter') { e.preventDefault(); castForTutorial(); return; }
   if (e.key === 'Backspace') { selected = selected.slice(0, -1); pendingKey = null; render(); return; }
   if (e.key === 'Escape') { selected = []; pendingKey = null; render(); return; }
@@ -441,8 +558,10 @@ loadDictionary()
     els.loading.classList.add('hidden');
     let seen = false;
     try { seen = localStorage.getItem('whizz-tutorial-done') === '1'; } catch { /* storage unavailable */ }
-    // Playtest shortcut: open the page with #bonus to jump to the bonus round.
-    if (location.hash === '#bonus') startBonus();
+    // Playtest shortcuts: #bonus jumps to the first bonus round, #shop opens
+    // the shop with $20 before round 1.
+    if (location.hash === '#bonus') startBonus(BONUS_AFTER[0]);
+    else if (location.hash === '#shop') { startRun(); run.coins = 20; renderCharms(); openShop(() => startRound(0)); }
     else if (seen) startRun();
     else startTutorial();
   })

@@ -1,6 +1,8 @@
 // Pure game logic. No DOM access here, so it can be unit-tested in Node and
 // driven by the simulation bot.
 
+import { applyCharms } from './charms.js';
+
 export const HAND_SIZE = 8;
 export const PLAYS_PER_ROUND = 4;
 export const DISCARDS_PER_ROUND = 3;
@@ -25,9 +27,16 @@ export const BAG_COUNTS = {
 // Bonus chips by word length (in letters, so two-letter tiles count twice).
 const LENGTH_BONUS = [0, 0, 0, 0, 5, 10, 20, 35, 50, 70];
 
-// Targets for the five scored rounds. A bonus round sits after round 3.
-export const ROUND_TARGETS = [60, 85, 115, 150, 190];
-export const BONUS_AFTER_ROUND = 2; // zero-based: after the third round
+// Targets for the eight scored rounds. Bonus rounds follow rounds 3 and 6
+// (zero-based indexes 2 and 5).
+export const ROUND_TARGETS = [60, 85, 115, 150, 190, 240, 300, 370];
+export const BONUS_AFTER = [2, 5];
+
+// Coins for clearing a round: a base amount plus $1 per unused cast.
+export const ROUND_COINS = 3;
+export function roundCoins(state, charms = []) {
+  return ROUND_COINS + state.playsLeft + charms.reduce((s, c) => s + (c.roundCoins?.(state) || 0), 0);
+}
 
 // Words found in the bonus round unlock these, cumulatively.
 export const BONUS_TIERS = [
@@ -85,14 +94,22 @@ export function tilesToWord(tiles) {
   return tiles.map((t) => t.letter).join('');
 }
 
-// Score a word made of tiles. Returns the breakdown so the UI can show it.
-export function scoreTiles(tiles) {
+// Score a word made of tiles, then let charms modify it. Returns the
+// breakdown (including which charms fired) so the UI can show it.
+// ctx carries what charms need to know: first/last cast of a round, coins.
+export function scoreTiles(tiles, { charms = [], first = false, last = false, coins = 0 } = {}) {
   const word = tilesToWord(tiles);
   const letterChips = tiles.reduce((sum, t) => sum + LETTER_VALUES[t.letter], 0);
   const lengthBonus = LENGTH_BONUS[Math.min(word.length, LENGTH_BONUS.length - 1)];
-  const chips = letterChips + lengthBonus;
-  const mult = Math.max(1, word.length - 2);
-  return { word, letterChips, lengthBonus, chips, mult, total: chips * mult };
+  const base = { chips: letterChips + lengthBonus, mult: Math.max(1, word.length - 2) };
+  const ctx = { word, tiles, length: word.length, first, last, coins };
+  const { chips, mult, total, fired } = applyCharms(base, charms, ctx);
+  return { word, letterChips, lengthBonus, chips, mult, total, fired };
+}
+
+// The scoring context for the next cast in this round.
+export function castContext(state, charms = [], coins = 0) {
+  return { charms, coins, first: state.history.length === 0, last: state.playsLeft === 1 };
 }
 
 // mode 'round': a scored round with a target and limited casts/discards.
@@ -145,7 +162,7 @@ function takeFromHand(state, tileIds) {
 }
 
 // Play the tiles (in order) as a word. isWord is injected for testability.
-export function playWord(state, tileIds, isWord) {
+export function playWord(state, tileIds, isWord, { charms = [], coins = 0 } = {}) {
   if (state.status !== 'playing') return { ok: false, reason: 'over' };
   if (state.playsLeft <= 0) return { ok: false, reason: 'no-plays' };
   const tiles = tileIds.map((id) => state.hand.find((t) => t.id === id));
@@ -155,8 +172,8 @@ export function playWord(state, tileIds, isWord) {
   if (!isWord(word)) return { ok: false, reason: 'not-a-word' };
   if (state.mode === 'bonus' && state.usedWords.has(word)) return { ok: false, reason: 'repeat' };
 
+  const result = scoreTiles(tiles, castContext(state, charms, coins));
   takeFromHand(state, tileIds);
-  const result = scoreTiles(tiles);
   state.score += result.total;
   state.playsLeft -= 1;
   state.history.push(result);
