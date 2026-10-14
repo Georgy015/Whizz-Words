@@ -361,11 +361,13 @@ function checkEnd() {
         + (run.extraPlays || run.extraDiscards ? ' Your bonus rewards are lost, and the next run starts fresh.' : ''),
       'Try again',
       startRun,
+      { cheer: 'sad' },
     );
   }
 }
 
-// With cheer, "Well done!" pops in first and the round summary follows.
+// With cheer, a headline pops in first and the round summary follows:
+// "Well done!" for wins (cheer: true) or "Bad luck!" for losses (cheer: 'sad').
 let revealTimer = null;
 function showOverlay(title, text, button, onClick, { cheer = false, alt = null } = {}) {
   clearTimeout(revealTimer);
@@ -379,6 +381,8 @@ function showOverlay(title, text, button, onClick, { cheer = false, alt = null }
   els.overlayBtn.textContent = button;
   els.overlayBtn.onclick = () => { els.overlay.classList.add('hidden'); onClick(); };
   els.overlayCheer.classList.toggle('hidden', !cheer);
+  els.overlayCheer.classList.toggle('sad', cheer === 'sad');
+  els.overlayCheer.textContent = cheer === 'sad' ? 'Bad luck!' : 'Well done!';
   els.overlayDetails.classList.remove('reveal');
   els.overlayDetails.classList.toggle('waiting', cheer);
   els.overlay.classList.remove('hidden');

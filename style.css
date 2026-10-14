@@ -192,11 +192,17 @@ html, body {
 }
 .cheer.hidden { display: none; }
 @keyframes cheer-pop { from { transform: scale(.3) rotate(-6deg); opacity: 0; } }
+.cheer.sad {
+  color: var(--danger);
+  text-shadow: 0 0 18px #ff7a8a66, 0 0 40px #9b7bff55;
+  animation: cheer-droop .7s cubic-bezier(.3,.7,.3,1.2);
+}
+@keyframes cheer-droop { from { transform: translateY(-24px) rotate(4deg); opacity: 0; } }
 .details.waiting { visibility: hidden; }
 .details.reveal { animation: reveal .4s ease-out; }
 @keyframes reveal { from { transform: translateY(10px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .cheer, .details.reveal { animation: none; }
+  .cheer, .cheer.sad, .details.reveal { animation: none; }
 }
 .panel p { color: var(--muted); margin: 0 0 20px; line-height: 1.5; }
 .panel-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
