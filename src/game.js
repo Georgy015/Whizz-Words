@@ -97,9 +97,15 @@ export function tilesToWord(tiles) {
 // Score a word made of tiles, then let charms modify it. Returns the
 // breakdown (including which charms fired) so the UI can show it.
 // ctx carries what charms need to know: first/last cast of a round, coins.
-export function scoreTiles(tiles, { charms = [], first = false, last = false, coins = 0 } = {}) {
+// rules are the round's boss rules (see bosses.js); zeroVowels mutes vowel tiles.
+const VOWEL_TILES = new Set(['a', 'e', 'i', 'o', 'u']);
+export function tileValue(tile, rules = {}) {
+  return rules.zeroVowels && VOWEL_TILES.has(tile.letter) ? 0 : LETTER_VALUES[tile.letter];
+}
+
+export function scoreTiles(tiles, { charms = [], first = false, last = false, coins = 0, rules = {} } = {}) {
   const word = tilesToWord(tiles);
-  const letterChips = tiles.reduce((sum, t) => sum + LETTER_VALUES[t.letter], 0);
+  const letterChips = tiles.reduce((sum, t) => sum + tileValue(t, rules), 0);
   const lengthBonus = LENGTH_BONUS[Math.min(word.length, LENGTH_BONUS.length - 1)];
   const base = { chips: letterChips + lengthBonus, mult: Math.max(1, word.length - 2) };
   const ctx = { word, tiles, length: word.length, first, last, coins };
@@ -108,8 +114,13 @@ export function scoreTiles(tiles, { charms = [], first = false, last = false, co
 }
 
 // The scoring context for the next cast in this round.
+// A charm switched off by a boss is left out here.
 export function castContext(state, charms = [], coins = 0) {
-  return { charms, coins, first: state.history.length === 0, last: state.playsLeft === 1 };
+  const rules = state.rules ?? {};
+  return {
+    charms: charms.filter((c) => c.id !== rules.disabledCharm),
+    coins, rules, first: state.history.length === 0, last: state.playsLeft === 1,
+  };
 }
 
 // mode 'round': a scored round with a target and limited casts/discards.
@@ -133,6 +144,8 @@ export function createRound({
     hand: hand ?? [],
     history: [],
     usedWords: new Set(),
+    rules: {}, // boss rules, filled in by applyBoss
+    boss: null,
     status: 'playing', // 'playing' | 'won' | 'lost'
   };
   refill(state);
@@ -148,8 +161,28 @@ function refill(state) {
     }
     state.hand.push(state.bag.pop());
   }
+  enforceHidden(state);
   // Out of tiles: no word can be made any more.
   if (state.status === 'playing' && state.hand.length < 3) state.status = 'lost';
+}
+
+// Keep rules.hidden tiles face-down in the hand, newest tiles first.
+export function enforceHidden(state) {
+  const want = state.rules?.hidden ?? 0;
+  let have = state.hand.filter((t) => t.hidden).length;
+  for (let i = state.hand.length - 1; i >= 0 && have < want; i--) {
+    if (!state.hand[i].hidden) { state.hand[i].hidden = true; have++; }
+  }
+}
+
+// Why a word breaks the round's boss rules, or null if it's allowed.
+export function ruleViolation(state, word) {
+  const { maxLength, climb, cursed } = state.rules ?? {};
+  if (maxLength && word.length > maxLength) return 'too-long';
+  if (cursed && word.includes(cursed)) return 'cursed';
+  const prev = state.history[state.history.length - 1];
+  if (climb && prev && word.length <= prev.word.length) return 'climb';
+  return null;
 }
 
 function takeFromHand(state, tileIds) {
@@ -169,6 +202,9 @@ export function playWord(state, tileIds, isWord, { charms = [], coins = 0 } = {}
   if (tiles.some((t) => !t)) return { ok: false, reason: 'bad-tiles' };
   const word = tilesToWord(tiles);
   if (word.length < 3) return { ok: false, reason: 'too-short' };
+  // Boss rules first, so a broken rule is named even for a non-word.
+  const broken = ruleViolation(state, word);
+  if (broken) return { ok: false, reason: broken };
   if (!isWord(word)) return { ok: false, reason: 'not-a-word' };
   if (state.mode === 'bonus' && state.usedWords.has(word)) return { ok: false, reason: 'repeat' };
 

@@ -261,3 +261,25 @@ html, body {
 .goal { min-width: 0; }
 .goal-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .actions .btn { padding-inline: 16px; white-space: nowrap; }
+
+/* Bosses */
+.boss-badge {
+  max-width: 100%; text-align: center; font-size: .9rem; line-height: 1.35;
+  color: #ffd9de; background: #ff7a8a1f; border: 1px solid #ff7a8a66;
+  border-radius: 99px; padding: 6px 14px;
+}
+.boss-badge.hidden { display: none; }
+.cheer.boss { color: var(--violet); text-shadow: 0 0 18px #9b7bffaa, 0 0 40px #9b7bff66; }
+.tile.face-down {
+  background: linear-gradient(160deg, #4a3a78, #2e2450);
+  color: var(--gold); box-shadow: 0 4px 0 #1d1636, 0 6px 14px #0007;
+}
+.tile.cursed { filter: grayscale(.7) brightness(.75); }
+.tile.cursed::after {
+  content: '✕'; position: absolute; left: 4px; top: 2px;
+  font-size: calc(var(--tile) * .22); color: #b0303f;
+}
+.charm.eaten { opacity: .35; border-style: dashed; }
+.charm.eaten .name { text-decoration: line-through; }
+#picker .shop-panel { max-height: calc(100vh - 32px); overflow-y: auto; }
+.offer .btn, .owned-row .btn { flex: none; }

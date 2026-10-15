@@ -1,9 +1,19 @@
 import {
   createRound, playWord, discardTiles, scoreTiles, tilesFromLetters, bonusRewards, carryOver,
-  castContext, roundCoins, createRng,
+  castContext, roundCoins, createRng, tileValue,
   LETTER_VALUES, ROUND_TARGETS, BONUS_AFTER, BONUS_SECONDS, BONUS_TIERS,
 } from './game.js';
 import { CHARM_SLOTS, charmById, shopOffers } from './charms.js';
+import { BOSSES, BOSS_REWARD, applyBoss, pickBosses } from './bosses.js';
+
+// Bosses are built but kept out of the main run until they've been playtested.
+// Flip BOSSES_IN_RUN to put them on rounds 4 and 8 (zero-based 3 and 7).
+const BOSSES_IN_RUN = false;
+const BOSS_ROUNDS = [3, 7];
+// Boss Trials: a page that only plays boss rounds, picked from a list.
+const BOSS_TRIALS = window.WHIZZ_BOSS_TRIALS === true || location.hash === '#bosses';
+const TRIAL_CHARMS = ['vowel-hunter', 'short-sweet', 'opening-spell'];
+const TRIAL_ROUND = 3;
 import { loadDictionary, isWord } from './dictionary.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +30,7 @@ const els = {
   loading: $('loading'), charms: $('charms'), coins: $('coins'),
   shop: $('shop'), shopCoins: $('shop-coins'), offers: $('offers'), shopOwned: $('shop-owned'),
   shopReroll: $('shop-reroll'), shopLeave: $('shop-leave'),
+  bossBadge: $('boss-badge'), picker: $('picker'), pickerList: $('picker-list'),
 };
 
 let state;
@@ -35,7 +46,7 @@ let tutorial = null; // { step } while the tutorial is running
 const fmt = (n) => (n === Infinity ? '∞' : n);
 
 function newRun() {
-  return { extraPlays: 0, extraDiscards: 0, carry: 0, coins: 0, charms: [] };
+  return { extraPlays: 0, extraDiscards: 0, carry: 0, coins: 0, charms: [], bosses: [] };
 }
 // The charms in play (none during the tutorial).
 const activeCharms = () => (tutorial ? [] : run.charms.map(charmById));
@@ -46,6 +57,7 @@ const isBonus = () => state.mode === 'bonus';
 
 function startRun() {
   run = newRun();
+  if (BOSSES_IN_RUN) run.bosses = pickBosses(createRng(Date.now() >>> 0), BOSS_ROUNDS.length);
   startRound(0);
 }
 
@@ -60,6 +72,15 @@ function startRound(roundIndex) {
   });
   resetView(run.carry ? `+${run.carry} points carried over from last round` : 'Tap letters to weave a word');
   run.carry = 0;
+  const bossSlot = BOSSES_IN_RUN ? BOSS_ROUNDS.indexOf(roundIndex) : -1;
+  if (bossSlot >= 0) introduceBoss(run.bosses[bossSlot]);
+}
+
+// Turn the current round into a boss round and show the boss's intro card.
+function introduceBoss(boss) {
+  const detail = applyBoss(state, boss, { rng: state.rng, charms: activeCharms() });
+  resetView('Tap letters to weave a word');
+  showOverlay(`${boss.glyph} ${boss.name}`, `${boss.rule} ${detail}`.trim(), 'Begin', () => {}, { cheer: 'boss' });
 }
 
 function startBonus(afterIndex) {
@@ -136,9 +157,17 @@ function tileEl(tile, onClick, extraClass = '') {
   const b = document.createElement('button');
   const duo = tile.letter.length > 1;
   const label = duo ? tile.letter[0].toUpperCase() + tile.letter.slice(1) : tile.letter.toUpperCase();
-  b.className = `tile ${duo ? 'duo' : ''} ${extraClass}`;
-  b.innerHTML = `${label}<span class="value">${LETTER_VALUES[tile.letter]}</span>`;
-  b.setAttribute('aria-label', tile.letter);
+  const cursed = state.rules?.cursed && tile.letter.includes(state.rules.cursed);
+  if (tile.hidden) {
+    b.className = `tile face-down ${extraClass}`;
+    b.innerHTML = '?';
+    b.setAttribute('aria-label', 'face-down tile');
+  } else {
+    const value = tileValue(tile, state.rules);
+    b.className = `tile ${duo ? 'duo' : ''} ${cursed ? 'cursed' : ''} ${extraClass}`;
+    b.innerHTML = `${label}<span class="value">${value}</span>`;
+    b.setAttribute('aria-label', tile.letter);
+  }
   b.addEventListener('click', onClick);
   return b;
 }
@@ -149,7 +178,8 @@ function selectedTiles() {
 
 function render() {
   const bonus = isBonus();
-  els.round.textContent = tutorial ? 'Practice' : bonus ? 'Bonus' : `Round ${state.roundIndex + 1}`;
+  els.round.textContent = tutorial ? 'Practice' : bonus ? 'Bonus'
+    : BOSS_TRIALS ? 'Boss trial' : `Round ${state.roundIndex + 1}`;
   els.round.classList.toggle('bonus', bonus);
   els.fill.classList.toggle('timer', bonus);
   if (!bonus) {
@@ -177,7 +207,12 @@ function render() {
 
   const tiles = selectedTiles();
   const word = tiles.map((t) => t.letter).join('');
-  if (tiles.length > 0) {
+  if (tiles.some((t) => t.hidden)) {
+    // Face-down tiles keep their secret until the word is cast.
+    els.chips.textContent = '?';
+    els.mult.textContent = '?';
+    els.preview.classList.remove('valid');
+  } else if (tiles.length > 0) {
     const s = scoreTiles(tiles, castContext(state, activeCharms(), run.coins));
     els.chips.textContent = s.chips;
     els.mult.textContent = s.mult;
@@ -197,6 +232,11 @@ function render() {
   els.shuffle.classList.toggle('hint', Boolean(step && step.action === 'shuffle'));
 
   renderCharms();
+  const boss = state.boss && BOSSES.find((b) => b.id === state.boss);
+  els.bossBadge.classList.toggle('hidden', !boss);
+  if (boss) {
+    els.bossBadge.textContent = `${boss.glyph} ${boss.name}: ${boss.badge?.(state) ?? boss.rule}`;
+  }
 
   els.log.replaceChildren(...state.history.map((h) => {
     const s = document.createElement('span');
@@ -211,12 +251,13 @@ function renderCharms() {
   for (let i = 0; i < CHARM_SLOTS; i++) {
     const c = owned[i];
     const b = document.createElement('button');
-    b.className = c ? 'charm' : 'charm empty';
+    const eaten = c && c.id === state?.rules?.disabledCharm;
+    b.className = c ? `charm ${eaten ? 'eaten' : ''}` : 'charm empty';
     if (c) {
       b.dataset.id = c.id;
       b.innerHTML = `<span class="glyph">${c.glyph}</span><span class="name">${c.name}</span>`;
       b.title = `${c.name}: ${c.text}`;
-      b.addEventListener('click', () => setMessage(`${c.name}: ${c.text}`));
+      b.addEventListener('click', () => setMessage(eaten ? `${c.name} was eaten by the Charm Eater this round` : `${c.name}: ${c.text}`));
     } else {
       b.setAttribute('aria-label', 'Empty charm slot');
       b.addEventListener('click', () => setMessage('Clear rounds to earn coins, then buy charms in the shop'));
@@ -265,6 +306,9 @@ function cast() {
       'too-short': 'Spells need at least 3 letters',
       'not-a-word': 'That word isn’t in the spellbook',
       repeat: 'You already cast that word',
+      'too-long': `Too long: words can be at most ${state.rules.maxLength} letters this round`,
+      cursed: `The cursed letter ${state.rules.cursed?.toUpperCase()} can’t be used`,
+      climb: `Each word must be longer than ${state.history[state.history.length - 1]?.word.length} letters`,
     }[res.reason] || 'The spell fizzled';
     setMessage(msg, 'bad');
     shake();
@@ -330,18 +374,19 @@ function floatText(text) {
 
 function checkEnd() {
   if (isBonus()) return;
+  if (state.boss && BOSS_TRIALS) return endTrial();
   const last = state.roundIndex >= ROUND_TARGETS.length - 1;
   if (state.status === 'won') {
     const bonusNext = BONUS_AFTER.includes(state.roundIndex);
     run.carry = last ? 0 : carryOver(state.score, state.target, ROUND_TARGETS[state.roundIndex + 1]);
-    const earned = roundCoins(state, activeCharms());
+    const earned = roundCoins(state, activeCharms()) + (state.boss ? BOSS_REWARD : 0);
     run.coins += earned;
     renderCharms();
     const carryText = (run.carry ? ` ${run.carry} extra points carry into the next round.` : '') + ` You earned $${earned}.`;
     const index = state.roundIndex;
     const next = bonusNext ? () => startBonus(index) : () => startRound(index + 1);
     showOverlay(
-      last ? 'You are a true Whizz Words wizard!' : 'Round cleared!',
+      last ? 'You are a true Whizz Words wizard!' : state.boss ? `${bossName()} is beaten!` : 'Round cleared!',
       last
         ? `You cleared all ${ROUND_TARGETS.length} rounds. Boss rounds come next.`
         : bonusNext
@@ -350,7 +395,7 @@ function checkEnd() {
       last ? 'Play again' : 'Visit the shop',
       () => (last ? startRun() : openShop(next)),
       {
-        cheer: true,
+        cheer: state.boss ? 'victory' : true,
         alt: last ? null : { label: bonusNext ? 'Continue to bonus round' : 'Continue to next round', onClick: next },
       },
     );
@@ -366,8 +411,66 @@ function checkEnd() {
   }
 }
 
-// With cheer, a headline pops in first and the round summary follows:
-// "Well done!" for wins (cheer: true) or "Bad luck!" for losses (cheer: 'sad').
+const bossName = () => BOSSES.find((b) => b.id === state.boss)?.name ?? '';
+
+// Boss Trials: pick a boss from the list and play its round.
+function startTrials() {
+  stopTimer();
+  run = newRun();
+  run.charms = [...TRIAL_CHARMS];
+  state = createRound({ seed: Date.now() >>> 0, roundIndex: TRIAL_ROUND });
+  resetView('Pick a boss to face');
+  showPicker();
+}
+
+function showPicker() {
+  els.pickerList.replaceChildren(...BOSSES.map((boss) => {
+    const card = document.createElement('div');
+    card.className = 'offer';
+    card.innerHTML = `<span class="glyph">${boss.glyph}</span>
+      <div class="offer-text"><b>${boss.name}${boss.final ? ' · final boss' : ''}</b><span>${boss.rule}</span></div>`;
+    const face = document.createElement('button');
+    face.className = 'btn primary small';
+    face.textContent = 'Face';
+    face.addEventListener('click', () => {
+      els.picker.classList.add('hidden');
+      startTrialRound(boss);
+    });
+    card.appendChild(face);
+    return card;
+  }));
+  els.picker.classList.remove('hidden');
+}
+
+function startTrialRound(boss) {
+  run.coins = 0;
+  state = createRound({
+    seed: (Date.now() ^ boss.id.length * 131) >>> 0,
+    roundIndex: TRIAL_ROUND,
+    extraPlays: charmSum('extraPlays'),
+    extraDiscards: charmSum('extraDiscards'),
+  });
+  state.trialBoss = boss;
+  introduceBoss(boss);
+}
+
+function endTrial() {
+  const boss = state.trialBoss;
+  const won = state.status === 'won';
+  if (!won && state.status !== 'lost') return;
+  showOverlay(
+    won ? `${boss.name} is beaten!` : `${boss.name} wins this time`,
+    won
+      ? `You scored ${state.score} of ${state.target}. In a full run this pays an extra $${BOSS_REWARD}.`
+      : `You reached ${state.score} of ${state.target}.`,
+    'Choose another boss',
+    showPicker,
+    { cheer: won ? 'victory' : 'sad', alt: { label: 'Face it again', onClick: () => startTrialRound(boss) } },
+  );
+}
+
+// With cheer, a headline pops in first and the round summary follows.
+const CHEERS = { true: 'Well done!', sad: 'Bad luck!', boss: 'Boss round!', victory: 'Boss defeated!' };
 let revealTimer = null;
 function showOverlay(title, text, button, onClick, { cheer = false, alt = null } = {}) {
   clearTimeout(revealTimer);
@@ -382,7 +485,8 @@ function showOverlay(title, text, button, onClick, { cheer = false, alt = null }
   els.overlayBtn.onclick = () => { els.overlay.classList.add('hidden'); onClick(); };
   els.overlayCheer.classList.toggle('hidden', !cheer);
   els.overlayCheer.classList.toggle('sad', cheer === 'sad');
-  els.overlayCheer.textContent = cheer === 'sad' ? 'Bad luck!' : 'Well done!';
+  els.overlayCheer.classList.toggle('boss', cheer === 'boss');
+  els.overlayCheer.textContent = CHEERS[cheer] ?? '';
   els.overlayDetails.classList.remove('reveal');
   els.overlayDetails.classList.toggle('waiting', cheer);
   els.overlay.classList.remove('hidden');
@@ -554,7 +658,7 @@ els.coachBtn.addEventListener('click', () => advanceTutorial('button'));
 
 // Desktop keyboard support: type letters, Backspace, Enter to cast.
 document.addEventListener('keydown', (e) => {
-  if (!state || busy || !els.overlay.classList.contains('hidden') || !els.shop.classList.contains('hidden')) return;
+  if (!state || busy || !els.overlay.classList.contains('hidden') || !els.shop.classList.contains('hidden') || !els.picker.classList.contains('hidden')) return;
   if (e.key === 'Enter') { e.preventDefault(); castForTutorial(); return; }
   if (e.key === 'Backspace') { selected = selected.slice(0, -1); pendingKey = null; render(); return; }
   if (e.key === 'Escape') { selected = []; pendingKey = null; render(); return; }
@@ -563,7 +667,7 @@ document.addEventListener('keydown', (e) => {
   // Typing the second letter of a two-letter tile just picked does nothing.
   if (pendingKey === key) { pendingKey = null; return; }
   pendingKey = null;
-  const free = state.hand.filter((t) => !selected.includes(t.id) && !els.hand.children[state.hand.indexOf(t)]?.classList.contains('locked'));
+  const free = state.hand.filter((t) => !t.hidden && !selected.includes(t.id) && !els.hand.children[state.hand.indexOf(t)]?.classList.contains('locked'));
   const tile = free.find((t) => t.letter === key) || free.find((t) => t.letter.length > 1 && t.letter[0] === key);
   if (!tile) return;
   if (tile.letter.length > 1) pendingKey = tile.letter.slice(1);
@@ -592,7 +696,8 @@ els.restart.addEventListener('click', () => {
         try { localStorage.setItem('whizz-tutorial-done', '1'); } catch { /* storage unavailable */ }
       }
       stopTimer();
-      startRun();
+      if (BOSS_TRIALS) startTrials();
+      else startRun();
     },
     { alt: { label: 'Keep playing', onClick: resumeClock } },
   );
@@ -619,7 +724,8 @@ loadDictionary()
     try { seen = localStorage.getItem('whizz-tutorial-done') === '1'; } catch { /* storage unavailable */ }
     // Playtest shortcuts: #bonus jumps to the first bonus round, #shop opens
     // the shop with $20 before round 1.
-    if (location.hash === '#bonus') startBonus(BONUS_AFTER[0]);
+    if (BOSS_TRIALS) startTrials();
+    else if (location.hash === '#bonus') startBonus(BONUS_AFTER[0]);
     else if (location.hash === '#shop') { startRun(); run.coins = 20; renderCharms(); openShop(() => startRound(0)); }
     else if (seen) startRun();
     else startTutorial();

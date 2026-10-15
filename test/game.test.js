@@ -161,7 +161,7 @@ test('situational charms read the cast context', () => {
 
 test('cast context knows the first and last cast of a round', () => {
   const r = createRound({ seed: 1 });
-  assert.deepEqual(castContext(r), { charms: [], coins: 0, first: true, last: false });
+  assert.deepEqual(castContext(r), { charms: [], coins: 0, rules: {}, first: true, last: false });
   r.playsLeft = 1;
   assert.equal(castContext(r).last, true);
 });
@@ -187,4 +187,74 @@ test('the run has eight rounds with bonus rounds after rounds 3 and 6', () => {
   assert.equal(ROUND_TARGETS.length, 8);
   assert.deepEqual(BONUS_AFTER, [2, 5]);
   assert.ok(ROUND_TARGETS.every((x, i) => i === 0 || x > ROUND_TARGETS[i - 1]));
+});
+
+// ---------- Bosses ----------
+import { BOSSES, bossById, applyBoss, pickBosses } from '../src/bosses.js';
+import { ruleViolation } from '../src/game.js';
+
+const bossRound = (id, opts = {}) => {
+  const r = createRound({ seed: 5, roundIndex: 3, ...opts });
+  const detail = applyBoss(r, bossById(id), { rng: createRng(1), charms: opts.charms ?? [] });
+  return { r, detail };
+};
+
+test('every boss has a name, glyph and rule, and exactly one is the final boss', () => {
+  assert.equal(BOSSES.length, 8);
+  for (const b of BOSSES) assert.ok(b.id && b.name && b.glyph && b.rule, b.id);
+  assert.equal(BOSSES.filter((b) => b.final).length, 1);
+});
+
+test('Mute Owl: vowel tiles score 0', () => {
+  const { r } = bossRound('mute-owl');
+  // CAT: C3 + A0 + T1 = 4 chips
+  assert.equal(scoreTiles(t(['c', 'a', 't']), castContext(r)).chips, 4);
+});
+
+test('Shrinking Hex, Banshee and Climbing Vine reject words that break their rule', () => {
+  assert.equal(ruleViolation(bossRound('shrinking-hex').r, 'wizard'), 'too-long');
+  assert.equal(ruleViolation(bossRound('shrinking-hex').r, 'wiz'), null);
+  const { r: banshee, detail } = bossRound('banshee');
+  assert.match(detail, /cursed letter is [RSTNL]/);
+  assert.equal(ruleViolation(banshee, `x${banshee.rules.cursed}y`), 'cursed');
+  const { r: vine } = bossRound('climbing-vine');
+  vine.history.push({ word: 'cats' });
+  assert.equal(ruleViolation(vine, 'dog'), 'climb');
+  assert.equal(ruleViolation(vine, 'dogs'), 'climb');
+  assert.equal(ruleViolation(vine, 'doggy'), null);
+});
+
+test('rule-breaking casts are refused and cost nothing', () => {
+  const { r } = bossRound('shrinking-hex', { hand: tilesFromLetters(['w', 'i', 'z', 'a', 'r', 'd', 'e', 's']) });
+  const res = playWord(r, r.hand.slice(0, 6).map((x) => x.id), () => true);
+  assert.equal(res.reason, 'too-long');
+  assert.equal(r.playsLeft, 4);
+});
+
+test('Frost Witch and Greedy Goblin cut casts and discards', () => {
+  assert.equal(bossRound('frost-witch').r.playsLeft, 3);
+  assert.equal(bossRound('greedy-goblin').r.discardsLeft, 0);
+});
+
+test('Ink Thief keeps two tiles face-down, even after refills', () => {
+  const { r } = bossRound('ink-thief');
+  assert.equal(r.hand.filter((x) => x.hidden).length, 2);
+  discardTiles(r, r.hand.filter((x) => x.hidden).map((x) => x.id));
+  assert.equal(r.hand.filter((x) => x.hidden).length, 2);
+});
+
+test('Charm Eater switches off one owned charm', () => {
+  const charms = [charmById('short-sweet')];
+  const { r, detail } = bossRound('charm-eater', { charms });
+  assert.match(detail, /Short & Sweet/);
+  const s = scoreTiles(t(['c', 'a', 't']), castContext(r, charms));
+  assert.equal(s.chips, 5);
+  assert.equal(s.fired.length, 0);
+});
+
+test('a run picks distinct regular bosses and ends with the final boss', () => {
+  const picks = pickBosses(createRng(4), 2);
+  assert.equal(picks.length, 2);
+  assert.ok(!picks[0].final);
+  assert.ok(picks[1].final);
 });

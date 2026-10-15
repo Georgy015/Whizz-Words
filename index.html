@@ -34,6 +34,7 @@
     </div>
 
     <section class="spell" aria-label="Your spell">
+      <div class="boss-badge hidden" id="boss-badge"></div>
       <div class="preview" id="preview">
         <span class="chips" id="preview-chips">0</span>
         <span class="times">×</span>
@@ -78,6 +79,14 @@
         <button class="btn primary" id="shop-leave">Continue</button>
       </div>
       <div class="shop-owned" id="shop-owned"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="picker">
+    <div class="panel shop-panel" role="dialog" aria-labelledby="picker-title">
+      <h2 id="picker-title">Boss Trials</h2>
+      <p class="shop-sub">Pick a boss and play its round (target 150). You start with three practice charms: Vowel Hunter, Short &amp; Sweet and Opening Spell.</p>
+      <div class="offers" id="picker-list"></div>
     </div>
   </div>
 
