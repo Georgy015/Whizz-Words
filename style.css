@@ -34,6 +34,9 @@
 
 html, body {
   margin: 0;
+  /* Set on body too, so a host page's own body font can't override it. */
+  font-family: var(--font-ui);
+  font-size: 16px;
   height: 100%;
   background: radial-gradient(ellipse at 50% 0%, var(--night-2), var(--night) 70%);
   color: var(--text);
