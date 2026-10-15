@@ -54,7 +54,8 @@ npm run build      # CrazyGames build: dist/ and whizz-words-crazygames.zip
 | `docs/crazygames-launch.md` | Launch guide |
 | `src/main.js` | UI, input and animations |
 | `src/dictionary.js` | Loads the word list into a `Set` |
-| `assets/words.txt` | ENABLE word list (public domain), 3–9 letter words |
+| `assets/words.txt` | ENABLE word list (public domain), 3–9 letter words, with offensive words removed |
+| `tools/filter-words.mjs`, `tools/word-filter.mjs`, `tools/blocklist-en.txt` | Word filter (LDNOOBW list, CC BY 4.0); `npm run build` runs it, and it is not shipped with the game |
 | `tools/sim.mjs` | Balance simulation: full runs with and without charms |
 
 ## Roadmap

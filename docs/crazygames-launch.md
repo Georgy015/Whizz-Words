@@ -74,9 +74,10 @@ clear all eight rounds?
 
 ## Before you submit
 
-- **Word filter (recommended):** the word list accepts every valid English word, including rude ones.
-  The game never shows or suggests words by itself, but a player's own words appear in the round log.
-  A short blocklist that rejects offensive words would be safer for the PEGI 12 rating.
+- **Word filter: done.** Offensive words are removed from the word list at build time
+  (`tools/filter-words.mjs`, using the CC BY 4.0 LDNOOBW list), so they aren't valid spells. Innocent
+  look-alikes such as *spicy*, *scat* and *fingering* stay playable. A test fails if a blocked word
+  ever returns to `assets/words.txt`.
 - **Play it on a real phone** through the portal's preview, with sound on.
 
 ## For Full Launch, later

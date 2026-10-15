@@ -258,3 +258,15 @@ test('a run picks distinct regular bosses and ends with the final boss', () => {
   assert.ok(!picks[0].final);
   assert.ok(picks[1].final);
 });
+
+// ---------- Word filter ----------
+import { readFileSync } from 'node:fs';
+import { blocked, ALLOW } from '../tools/word-filter.mjs';
+
+test('the word list contains no blocked words, and keeps innocent look-alikes', () => {
+  const words = new Set(readFileSync(new URL('../assets/words.txt', import.meta.url), 'utf8').split('\n'));
+  const leaks = [...blocked].filter((w) => words.has(w));
+  assert.equal(leaks.length, 0, `run node tools/filter-words.mjs (${leaks.length} blocked words found)`);
+  for (const w of ['spicy', 'fingering', 'scat', 'horns', 'pants', 'grape']) assert.ok(words.has(w), w);
+  assert.ok(blocked.size > 300 && ALLOW.has('spicy'));
+});

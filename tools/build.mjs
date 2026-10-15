@@ -10,6 +10,9 @@ const root = new URL('..', import.meta.url).pathname;
 const dist = join(root, 'dist');
 const zipPath = join(root, 'whizz-words-crazygames.zip');
 
+// Make sure no offensive words are in the word list before shipping it.
+execFileSync('node', [join(root, 'tools/filter-words.mjs')], { stdio: 'inherit' });
+
 rmSync(dist, { recursive: true, force: true });
 rmSync(zipPath, { force: true });
 mkdirSync(dist);
