@@ -14,6 +14,8 @@ const BOSS_TRIALS = window.WHIZZ_BOSS_TRIALS === true || location.hash === '#bos
 const TRIAL_CHARMS = ['vowel-hunter', 'short-sweet', 'opening-spell'];
 const TRIAL_ROUND = 3;
 import { loadDictionary, isWord } from './dictionary.js';
+import { sfx, soundOn, setSound } from './sound.js';
+import { burstFrom, screenShake, popLabel, countUp, wait, reducedMotion } from './fx.js';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -30,6 +32,7 @@ const els = {
   shop: $('shop'), shopCoins: $('shop-coins'), offers: $('offers'), shopOwned: $('shop-owned'),
   shopReroll: $('shop-reroll'), shopLeave: $('shop-leave'),
   bossBadge: $('boss-badge'), picker: $('picker'), pickerList: $('picker-list'),
+  game: $('game'), overlaySound: $('overlay-sound'),
 };
 
 let state;
@@ -41,6 +44,7 @@ let run = newRun();
 let timer = null;
 let bonusEndsAt = 0;
 let tutorial = null; // { step } while the tutorial is running
+let shownScore = null; // score shown in the header while it counts up
 
 const fmt = (n) => (n === Infinity ? '∞' : n);
 
@@ -72,7 +76,11 @@ function startRound(roundIndex) {
   resetView(run.carry ? `+${run.carry} points carried over from last round` : 'Tap letters to weave a word');
   run.carry = 0;
   const bossSlot = BOSSES_IN_RUN ? BOSS_ROUNDS.indexOf(roundIndex) : -1;
-  if (bossSlot >= 0) introduceBoss(run.bosses[bossSlot]);
+  if (bossSlot >= 0) {
+    // Runs pick their bosses up front; playtest shortcuts may skip that.
+    if (!run.bosses.length) run.bosses = pickBosses(createRng(Date.now() >>> 0), BOSS_ROUNDS.length);
+    introduceBoss(run.bosses[bossSlot]);
+  }
 }
 
 // Turn the current round into a boss round and show the boss's intro card.
@@ -118,12 +126,18 @@ function resumeClock() {
   timer = setInterval(tickBonus, 100);
 }
 
+let lastCountdown = null;
 function tickBonus() {
   const left = Math.max(0, bonusEndsAt - Date.now());
+  const secs = Math.ceil(left / 1000);
+  if (secs <= 5 && secs > 0 && secs !== lastCountdown) sfx.countdown();
+  lastCountdown = secs;
+  els.fill.classList.toggle('urgent', secs <= 5);
   els.goalText.textContent = `${Math.ceil(left / 1000)}s · ${state.history.length} words`;
   els.fill.style.width = `${(left / (BONUS_SECONDS * 1000)) * 100}%`;
   if (left > 0) return;
   stopTimer();
+  sfx.timeUp();
   state.status = 'won';
   busy = false;
   const reward = bonusRewards(state.history.length);
@@ -181,12 +195,7 @@ function render() {
     : BOSS_TRIALS ? 'Boss trial' : `Round ${state.roundIndex + 1}`;
   els.round.classList.toggle('bonus', bonus);
   els.fill.classList.toggle('timer', bonus);
-  if (!bonus) {
-    els.goalText.innerHTML = tutorial
-      ? `<span id="score">${state.score}</span> points`
-      : `<span id="score">${state.score}</span> / <span id="target">${state.target}</span>`;
-    els.fill.style.width = `${Math.min(100, (state.score / state.target) * 100)}%`;
-  }
+  if (!bonus) updateGoal(shownScore ?? state.score);
   els.plays.textContent = fmt(state.playsLeft);
   els.discards.textContent = fmt(state.discardsLeft);
 
@@ -277,6 +286,13 @@ function pulseCharms(fired) {
   }
 }
 
+function updateGoal(score) {
+  els.goalText.innerHTML = tutorial
+    ? `<span id="score">${score}</span> points`
+    : `<span id="score">${score}</span> / <span id="target">${state.target}</span>`;
+  els.fill.style.width = `${Math.min(100, (score / state.target) * 100)}%`;
+}
+
 function setMessage(text, kind = '') {
   els.message.textContent = text;
   els.message.className = `message ${kind}`;
@@ -292,13 +308,16 @@ function shake() {
 
 function toggle(id) {
   if (busy || state.status !== 'playing') return;
-  selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+  const removing = selected.includes(id);
+  selected = removing ? selected.filter((x) => x !== id) : [...selected, id];
+  (removing ? sfx.untap : sfx.tap)();
   render();
 }
 
 function cast() {
   if (busy || selected.length === 0 || els.cast.disabled) return;
   const before = new Set(state.hand.map((t) => t.id));
+  const castTiles = selectedTiles();
   const res = playWord(state, selected, isWord, { charms: activeCharms(), coins: run.coins });
   if (!res.ok) {
     const msg = {
@@ -310,14 +329,19 @@ function cast() {
       climb: `Each word must be longer than ${state.history[state.history.length - 1]?.word.length} letters`,
     }[res.reason] || 'The spell fizzled';
     setMessage(msg, 'bad');
+    sfx.invalid();
+    els.spell.querySelectorAll('.tile').forEach((t) => {
+      t.classList.remove('bad-flash');
+      void t.offsetWidth;
+      t.classList.add('bad-flash');
+    });
     shake();
     return;
   }
 
   const { result } = res;
   busy = true;
-  els.spell.querySelectorAll('.tile').forEach((t) => t.classList.add('cast-out'));
-  floatText(`+${result.total}`);
+  shownScore = state.score - result.total;
   const charmNote = result.fired.map((f) => `${charmById(f.id).name} ${f.label}`).join(', ');
   setMessage(
     isBonus()
@@ -325,16 +349,67 @@ function cast() {
       : `${result.word.toUpperCase()}: ${result.chips} × ${result.mult}${charmNote ? ` (${charmNote})` : ''}`,
     'good',
   );
-  pulseCharms(result.fired);
-
-  setTimeout(() => {
+  playCastSequence(castTiles, result).then(() => {
+    shownScore = null;
     selected = [];
     freshIds = new Set(state.hand.map((t) => t.id).filter((id) => !before.has(id)));
     busy = false;
     if (tutorial) return advanceTutorial('cast');
     render();
     checkEnd();
-  }, 500);
+  });
+}
+
+// The scoring show: each tile lights up with its points, then each charm that
+// fired, then the total lands and the header score counts up. Faster in the
+// bonus round, where the clock is running.
+async function playCastSequence(tiles, result) {
+  const fast = isBonus() || reducedMotion();
+  const tileEls = [...els.spell.querySelectorAll('.tile')];
+  for (let i = 0; i < tileEls.length; i++) {
+    const el = tileEls[i];
+    const t = tiles[i];
+    if (t.hidden) {
+      // The Ink Thief's face-down tiles are revealed as they score.
+      const duo = t.letter.length > 1;
+      el.className = `tile ${duo ? 'duo' : ''}`;
+      el.textContent = duo ? t.letter[0].toUpperCase() + t.letter.slice(1) : t.letter.toUpperCase();
+    }
+    el.classList.add('scoring');
+    popLabel(el, `+${tileValue(t, state.rules)}`);
+    sfx.letter(i);
+    await wait(fast ? 45 : 110);
+  }
+  for (const f of result.fired) {
+    pulseCharms([f]);
+    const charmEl = els.charms.querySelector(`[data-id="${f.id}"]`);
+    if (charmEl) popLabel(charmEl, f.label, 'charm');
+    sfx.charm();
+    await wait(fast ? 70 : 240);
+  }
+  els.chips.textContent = result.chips;
+  els.mult.textContent = result.mult;
+  els.preview.classList.add('valid');
+  els.preview.classList.remove('total-pop');
+  void els.preview.offsetWidth;
+  els.preview.classList.add('total-pop');
+  floatText(`+${result.total}`);
+  sfx.total(result.total >= 100);
+  burstFrom(els.spell, { count: result.total >= 100 ? 18 : 10 });
+  if (result.total >= 100) screenShake(els.game, result.total >= 250 ? 2 : 1);
+  await wait(fast ? 120 : 260);
+  tileEls.forEach((el) => el.classList.add('cast-out'));
+  if (!isBonus()) {
+    let lastTick = 0;
+    await countUp(shownScore, state.score, fast ? 200 : 550, (v) => {
+      shownScore = v;
+      updateGoal(v);
+      const now = performance.now();
+      if (now - lastTick > 45) { sfx.tick(); lastTick = now; }
+    });
+  } else {
+    await wait(150);
+  }
 }
 
 function discard() {
@@ -342,6 +417,7 @@ function discard() {
   const before = new Set(state.hand.map((t) => t.id));
   const res = discardTiles(state, selected);
   if (!res.ok) return;
+  sfx.discard();
   freshIds = new Set(state.hand.map((t) => t.id).filter((id) => !before.has(id)));
   selected = [];
   setMessage('Letters returned to the void');
@@ -352,6 +428,12 @@ function discard() {
 
 function shuffle() {
   if (busy || els.shuffle.disabled) return;
+  sfx.shuffle();
+  if (!reducedMotion()) {
+    els.hand.classList.remove('shuffling');
+    void els.hand.offsetWidth;
+    els.hand.classList.add('shuffling');
+  }
   for (let i = state.hand.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [state.hand[i], state.hand[j]] = [state.hand[j], state.hand[i]];
@@ -361,12 +443,13 @@ function shuffle() {
 }
 
 function floatText(text) {
-  const rect = els.spell.getBoundingClientRect();
+  // Rise from just above the chips × mult line so the two don't overlap.
+  const rect = els.preview.getBoundingClientRect();
   const f = document.createElement('div');
   f.className = 'float';
   f.textContent = text;
   f.style.left = `${rect.left + rect.width / 2}px`;
-  f.style.top = `${rect.top}px`;
+  f.style.top = `${rect.top - 44}px`;
   document.body.appendChild(f);
   setTimeout(() => f.remove(), 1000);
 }
@@ -472,8 +555,15 @@ function endTrial() {
 // With cheer, a headline pops in first and the round summary follows.
 const CHEERS = { true: 'Well done!', sad: 'Bad luck!', boss: 'Boss round!', victory: 'Boss defeated!' };
 let revealTimer = null;
-function showOverlay(title, text, button, onClick, { cheer = false, alt = null } = {}) {
+function showOverlay(title, text, button, onClick, { cheer = false, alt = null, sound = false } = {}) {
   clearTimeout(revealTimer);
+  els.overlaySound.classList.toggle('hidden', !sound);
+  if (sound) renderSoundToggle();
+  if (cheer === true || cheer === 'victory') {
+    sfx.win();
+    setTimeout(() => burstFrom(els.overlayCheer, { count: 22, spread: 140 }), 150);
+  } else if (cheer === 'sad') sfx.lose();
+  else if (cheer === 'boss') sfx.boss();
   els.overlayAlt.classList.toggle('hidden', !alt);
   if (alt) {
     els.overlayAlt.textContent = alt.label;
@@ -526,6 +616,8 @@ function renderShop() {
     buy.disabled = !afford || full;
     buy.title = full ? 'Your charm slots are full' : afford ? '' : 'Not enough coins';
     buy.addEventListener('click', () => {
+      sfx.coin();
+      burstFrom(buy, { count: 8, spread: 50 });
       run.coins -= c.price;
       run.charms.push(c.id);
       shop.offers = shop.offers.filter((o) => o.id !== c.id);
@@ -557,6 +649,7 @@ function renderShop() {
     sell.className = 'btn secondary small';
     sell.textContent = `Sell $${sellPrice(c)}`;
     sell.addEventListener('click', () => {
+      sfx.coin();
       run.coins += sellPrice(c);
       run.charms = run.charms.filter((id) => id !== c.id);
       renderShop();
@@ -573,6 +666,7 @@ const sellPrice = (c) => Math.max(1, Math.floor(c.price / 2));
 els.shopReroll.addEventListener('click', () => {
   if (run.coins < shop.rerollCost) return;
   run.coins -= shop.rerollCost;
+  sfx.shuffle();
   shop.rerollCost += 1;
   shop.offers = shopOffers(shop.rng, run.charms);
   renderShop();
@@ -709,8 +803,19 @@ function showPause() {
   pauseClock();
   showOverlay('Paused', 'Your game is on hold. Take your time.', 'Resume', resumeClock, {
     alt: { label: 'How to play', onClick: startTutorial },
+    sound: true,
   });
 }
+
+function renderSoundToggle() {
+  els.overlaySound.textContent = soundOn() ? '♪ Sound: on' : '♪ Sound: off';
+  els.overlaySound.setAttribute('aria-pressed', String(soundOn()));
+}
+els.overlaySound.addEventListener('click', () => {
+  setSound(!soundOn());
+  renderSoundToggle();
+  sfx.tap();
+});
 els.pause.addEventListener('click', showPause);
 // Leaving the tab pauses a running bonus clock.
 document.addEventListener('visibilitychange', () => {

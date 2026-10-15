@@ -283,3 +283,51 @@ html, body {
 .charm.eaten .name { text-decoration: line-through; }
 #picker .shop-panel { max-height: calc(100vh - 32px); overflow-y: auto; }
 .offer .btn, .owned-row .btn { flex: none; }
+
+/* ---------- M3: feel ---------- */
+.spark {
+  position: fixed; pointer-events: none; z-index: 30; line-height: 1;
+  transform: translate(-50%, -50%);
+  animation: spark .85s cubic-bezier(.15,.7,.3,1) forwards;
+}
+@keyframes spark {
+  0% { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(90deg); opacity: 0; }
+}
+.quake { animation: quake .35s ease-in-out; }
+@keyframes quake {
+  20% { transform: translate(var(--shake), calc(var(--shake) * -.5)); }
+  40% { transform: translate(calc(var(--shake) * -1), calc(var(--shake) * .5)); }
+  60% { transform: translate(calc(var(--shake) * .6), 0); }
+  80% { transform: translate(calc(var(--shake) * -.4), 0); }
+}
+.pop-label {
+  position: fixed; z-index: 25; pointer-events: none; transform: translate(-50%, -100%);
+  font-weight: bold; font-size: 1.05rem; color: #8fd3ff; text-shadow: 0 0 8px #000a;
+  animation: pop-up .8s ease-out forwards;
+}
+.pop-label.charm { color: var(--danger); font-size: .95rem; }
+@keyframes pop-up {
+  0% { transform: translate(-50%, -60%) scale(.6); opacity: 0; }
+  25% { transform: translate(-50%, -120%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -200%) scale(1); opacity: 0; }
+}
+.spell-slots .tile.scoring {
+  transform: translateY(-8px) scale(1.08);
+  box-shadow: 0 4px 0 #a88a52, 0 0 26px var(--gold), 0 0 6px #fff;
+  transition: transform .12s cubic-bezier(.2,.8,.2,1.4), box-shadow .12s;
+}
+.preview.total-pop { animation: total-pop .45s cubic-bezier(.2,.8,.2,1.4); }
+@keyframes total-pop { 40% { transform: scale(1.25); } }
+.hand.shuffling .tile { animation: wiggle .35s ease-in-out; }
+.hand.shuffling .tile:nth-child(odd) { animation-delay: .04s; }
+@keyframes wiggle { 30% { transform: translateY(-6px) rotate(-6deg); } 65% { transform: translateY(2px) rotate(5deg); } }
+.tile.bad-flash { animation: bad-flash .45s; }
+@keyframes bad-flash { 30% { background: #ffb3bd; box-shadow: 0 4px 0 #a8525d, 0 0 18px var(--danger); } }
+.goal-fill.urgent { animation: urgent .5s ease-in-out infinite alternate; }
+@keyframes urgent { to { filter: brightness(1.6); } }
+.sound-toggle { margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .quake, .preview.total-pop, .hand.shuffling .tile, .tile.bad-flash, .goal-fill.urgent, .pop-label { animation: none; }
+}
