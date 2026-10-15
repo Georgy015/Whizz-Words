@@ -404,6 +404,12 @@ html, body {
   .logo-hat { width: 70px; }
   .logo-text { font-size: 2.6rem; }
 }
+/* Short screens (phones in landscape): drop the hat, never clip the top. */
+.title-screen { justify-content: safe center; overflow-y: auto; }
+@media (max-height: 430px) {
+  .logo-hat { display: none; }
+  .title-tiles { --tile: 32px; }
+}
 .title-actions > .btn.secondary { width: 100%; }
 .title-row .sound-toggle { margin-top: 0; }
 .btn:focus-visible, .tile:focus-visible, .charm:focus-visible, .counter.help:focus-visible {

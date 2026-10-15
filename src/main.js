@@ -14,7 +14,11 @@ const BOSS_TRIALS = window.WHIZZ_BOSS_TRIALS === true || location.hash === '#bos
 const TRIAL_CHARMS = ['vowel-hunter', 'short-sweet', 'opening-spell'];
 const TRIAL_ROUND = 3;
 import { loadDictionary, isWord } from './dictionary.js';
-import { sfx, soundOn, setSound } from './sound.js';
+import { sfx, soundOn, setSound, setForcedMute } from './sound.js';
+import {
+  initPlatform, loadingStart, loadingStop, happytime, setGameplay, platformMuted,
+  onSettingsChange, storeGet, storeSet, midgameAd,
+} from './platform.js';
 import { startMusic, stopMusic, musicOn, setMusic } from './music.js';
 import { burstFrom, screenShake, popLabel, countUp, wait, reducedMotion } from './fx.js';
 
@@ -156,7 +160,7 @@ function tickBonus() {
       ? `You coined ${state.history.length} words and earned ${parts.join(' and ')} for every remaining round.`
       : `You coined ${state.history.length} words. Find ${BONUS_TIERS[0].words} next time to earn a reward.`,
     `On to round ${state.roundIndex + 2}`,
-    ((next) => () => startRound(next))(state.roundIndex + 1),
+    ((next) => afterAd(() => startRound(next)))(state.roundIndex + 1),
     { cheer: parts.length > 0 },
   );
 }
@@ -472,7 +476,8 @@ function checkEnd() {
     const carryText = (run.carry ? ` ${run.carry} extra points carry into the next round.` : '')
       + ` You earned $${earned}${state.boss ? `, including $${BOSS_REWARD} for beating the boss` : ''}.`;
     const index = state.roundIndex;
-    const next = bonusNext ? () => startBonus(index) : () => startRound(index + 1);
+    const next = afterAd(bonusNext ? () => startBonus(index) : () => startRound(index + 1));
+    if (state.boss || last) happytime();
     showOverlay(
       last ? 'You are a true Whizz Words wizard!' : state.boss ? `${bossName()} is beaten!` : 'Round cleared!',
       last
@@ -729,7 +734,7 @@ function advanceTutorial(action) {
   if (step.last) {
     tutorial = null;
     els.coach.classList.add('hidden');
-    try { localStorage.setItem('whizz-tutorial-done', '1'); } catch { /* storage unavailable */ }
+    storeSet('whizz-tutorial-done', '1');
     startRun();
     return;
   }
@@ -792,7 +797,7 @@ els.restart.addEventListener('click', () => {
       if (tutorial) {
         tutorial = null;
         els.coach.classList.add('hidden');
-        try { localStorage.setItem('whizz-tutorial-done', '1'); } catch { /* storage unavailable */ }
+        storeSet('whizz-tutorial-done', '1');
       }
       stopTimer();
       if (BOSS_TRIALS) startTrials();
@@ -830,27 +835,37 @@ for (const el of [els.overlayMusic, els.titleMusic]) {
   el.addEventListener('click', () => { setMusic(!musicOn()); renderToggles(); sfx.tap(); syncMusic(); });
 }
 
-// ---------- Music ----------
-// Music plays only while a round is on screen: any pop-up, the shop, the boss
-// list, the title screen or a hidden tab stops it, and it resumes after.
+// ---------- Play session: music and CrazyGames gameplay events ----------
+// A round is "in play" only while it's on screen: any pop-up, the shop, the
+// boss list, the title screen, an ad or a hidden tab is a break. Music plays
+// only in play, and CrazyGames gets gameplayStart/Stop on the same breaks.
 const screens = () => [els.overlay, els.shop, els.picker, els.title];
+let adPlaying = false;
+const audioMuted = () => platformMuted() || adPlaying;
 function syncMusic() {
-  const blocked = !state || document.hidden || screens().some((el) => !el.classList.contains('hidden'));
-  if (blocked || !musicOn()) stopMusic();
-  else startMusic();
+  const inPlay = Boolean(state) && !document.hidden && !adPlaying
+    && screens().every((el) => el.classList.contains('hidden'));
+  setGameplay(inPlay);
+  setForcedMute(audioMuted());
+  if (inPlay && musicOn() && !audioMuted()) startMusic();
+  else stopMusic();
 }
+onSettingsChange(syncMusic);
+
+// Run fn after a midgame ad (a no-op until ads are switched on for Full Launch).
+const afterAd = (fn) => () => midgameAd({
+  onStart: () => { adPlaying = true; syncMusic(); },
+  onEnd: () => { adPlaying = false; syncMusic(); },
+}).then(fn);
 const screenWatcher = new MutationObserver(syncMusic);
 for (const el of screens()) screenWatcher.observe(el, { attributes: true, attributeFilter: ['class'] });
 document.addEventListener('visibilitychange', syncMusic);
 
 // ---------- Title screen ----------
 const BEST_KEY = 'whizz-best';
-function bestRound() {
-  try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
-}
+const bestRound = () => Number(storeGet(BEST_KEY)) || 0;
 function recordBest(cleared) {
-  if (cleared <= bestRound()) return;
-  try { localStorage.setItem(BEST_KEY, String(cleared)); } catch { /* storage unavailable */ }
+  if (cleared > bestRound()) storeSet(BEST_KEY, String(cleared));
 }
 
 function showTitle() {
@@ -867,8 +882,7 @@ function showTitle() {
 els.titlePlay.addEventListener('click', () => {
   sfx.tap();
   els.title.classList.add('hidden');
-  let seen = false;
-  try { seen = localStorage.getItem('whizz-tutorial-done') === '1'; } catch { /* storage unavailable */ }
+  const seen = storeGet('whizz-tutorial-done') === '1';
   if (BOSS_TRIALS) startTrials();
   else if (seen) startRun();
   else startTutorial();
@@ -884,8 +898,14 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && timer) showPause();
 });
 
-loadDictionary()
+initPlatform()
   .then(() => {
+    loadingStart();
+    return loadDictionary();
+  })
+  .then(() => {
+    loadingStop();
+    syncMusic();
     els.loading.classList.add('hidden');
     // Playtest shortcuts skip the title: #bonus jumps to the first bonus round,
     // #boss to the round 4 boss, #shop opens the shop with $20 before round 1.

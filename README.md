@@ -3,7 +3,9 @@
 A cozy wizard word roguelite for the web, targeting [CrazyGames](https://www.crazygames.com).
 Build words from letter tiles, score `chips × mult`, and hit each round's target.
 
-## Status: M3 in progress, feel and sound
+## Status: ready for CrazyGames Basic Launch
+
+See [docs/crazygames-launch.md](docs/crazygames-launch.md) for the upload checklist, store text and assets.
 
 - **8 rounds** with targets 60 → 85 → 115 → 150 → 190 → 240 → 300 → 370
 - Hand of 8 tiles from a 61-tile bag, including golden two-letter tiles (**Qu, Th, Er, In, St, Ch**) that count as two letters
@@ -26,12 +28,13 @@ Build words from letter tiles, score `chips × mult`, and hit each round's targe
 
 ## Run it
 
-No build step is needed. Serve the folder with any static server:
+No build step is needed to play locally. Serve the folder with any static server:
 
 ```sh
 npm start          # http://localhost:5173
 npm test           # unit tests for the game logic
-npm run sim        # bot plays many rounds and reports win rate per target
+npm run sim        # bot plays full runs and reports how far it gets
+npm run build      # CrazyGames build: dist/ and whizz-words-crazygames.zip
 ```
 
 ## Layout
@@ -44,6 +47,11 @@ npm run sim        # bot plays many rounds and reports win rate per target
 | `src/sound.js` | Sound effects, synthesized with the Web Audio API |
 | `src/music.js` | Background music: a lo-fi loop sequenced live with Web Audio |
 | `src/fx.js` | Sparkles, screen shake, floating labels and counting numbers |
+| `src/platform.js` | CrazyGames SDK v3 wrapper (safe no-op elsewhere) |
+| `tools/build.mjs` | Production build and upload zip |
+| `tools/cover.html`, `tools/store-assets.cjs` | Store cover artwork and its renderer |
+| `store/` | Covers and preview video for the CrazyGames store |
+| `docs/crazygames-launch.md` | Launch guide |
 | `src/main.js` | UI, input and animations |
 | `src/dictionary.js` | Loads the word list into a `Set` |
 | `assets/words.txt` | ENABLE word list (public domain), 3–9 letter words |

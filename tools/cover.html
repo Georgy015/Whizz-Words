@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Whizz Words cover</title>
+<!-- Store cover artwork. Rendered to PNG by tools/store-assets.mjs at
+     ?shape=landscape (1920x1080), portrait (800x1200) and square (800x800). -->
+<style>
+  @font-face { font-family: 'Cinzel Decorative'; font-weight: 900; src: url('../assets/fonts/cinzel-decorative-900.woff2') format('woff2'); }
+  @font-face { font-family: 'Fredoka'; font-weight: 300 700; src: url('../assets/fonts/fredoka-variable.woff2') format('woff2'); }
+  :root {
+    --night: #1b1530; --night-2: #2a2048; --gold: #f2c35b; --gold-deep: #c8902f;
+    --violet: #9b7bff; --parchment: #f3e4c3; --ink: #3b2a1a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(ellipse at 50% 35%, #4b3685 0%, #2e2252 38%, var(--night) 75%),
+      var(--night);
+    font-family: 'Fredoka', sans-serif;
+    position: relative;
+  }
+  .stars { position: absolute; inset: 0; }
+  .stars i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; opacity: .7; }
+  .glow {
+    position: absolute; left: 50%; top: 42%; width: 70vmin; height: 70vmin; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, #f2c35b55, transparent 65%); filter: blur(10px);
+  }
+  .stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .hat { width: 30vmin; filter: drop-shadow(0 0 4vmin #9b7bffaa); transform: rotate(-8deg); }
+  .title {
+    margin: 0; font-family: 'Cinzel Decorative', serif; font-weight: 900; line-height: .9; text-align: center;
+    background: linear-gradient(180deg, #fff6d6 0%, var(--gold) 45%, var(--gold-deep) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 .6vmin 0 #6b4a17) drop-shadow(0 0 3vmin #f2c35b88);
+  }
+  .title span { display: block; }
+  .title .small { font-size: .55em; letter-spacing: .1em; margin-top: .08em; }
+  .tiles { display: flex; gap: 1.6vmin; }
+  .tile {
+    position: relative; width: var(--t); height: var(--t); border-radius: calc(var(--t) * .16);
+    background: linear-gradient(160deg, #fff6df, var(--parchment) 60%, #d9c08d);
+    box-shadow: 0 calc(var(--t) * .08) 0 #a88a52, 0 calc(var(--t) * .14) calc(var(--t) * .3) #0009;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; color: var(--ink); font-size: calc(var(--t) * .55);
+  }
+  .tile.duo { background: linear-gradient(160deg, #fff3c4, #f6d77e 60%, #d9a944); font-size: calc(var(--t) * .4); }
+  .tile b { position: absolute; right: 8%; bottom: 4%; font-size: calc(var(--t) * .2); font-weight: 500; opacity: .7; }
+  .tile:nth-child(odd) { transform: translateY(-.8vmin) rotate(-4deg); }
+  .tile:nth-child(even) { transform: translateY(.8vmin) rotate(4deg); }
+  .charm {
+    position: absolute; font-size: var(--c); color: var(--gold);
+    width: calc(var(--c) * 1.7); height: calc(var(--c) * 1.7); border-radius: 26%;
+    display: flex; align-items: center; justify-content: center;
+    background: #9b7bff33; border: .3vmin solid #9b7bff99; box-shadow: 0 0 3vmin #9b7bff66;
+  }
+  .score {
+    font-weight: 700; color: #fff3c4; text-shadow: 0 0 2vmin var(--gold), 0 .4vmin 0 #8a5f1c;
+    font-size: 6vmin; position: absolute;
+  }
+  .spark { position: absolute; color: #fff3c4; text-shadow: 0 0 1.5vmin var(--gold); }
+
+  /* Landscape 16:9: hat and title left of centre, tiles below, charms around. */
+  .landscape .stage { gap: 3vmin; }
+  .landscape .title { font-size: 19vmin; }
+  .landscape .tiles { --t: 13vmin; margin-top: 2vmin; }
+  .landscape .hat { position: absolute; left: 14%; top: 18%; width: 34vmin; }
+  /* Portrait 2:3 */
+  .portrait .stage { gap: 5vmin; padding-top: 6vmin; }
+  .portrait .title { font-size: 20vmin; }
+  .portrait .hat { width: 46vmin; }
+  .portrait .tiles { --t: 14vmin; gap: 2vmin; }
+  /* Square 1:1 */
+  .square .stage { gap: 4vmin; }
+  .square .title { font-size: 17vmin; }
+  .square .hat { width: 36vmin; }
+  .square .tiles { --t: 13vmin; }
+</style>
+</head>
+<body>
+  <div class="stars" id="stars"></div>
+  <div class="glow"></div>
+  <div class="stage">
+    <svg class="hat" viewBox="0 0 160 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="hb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c3abff"/><stop offset="1" stop-color="#5b3fb0"/></linearGradient>
+        <linearGradient id="hg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c8902f"/><stop offset=".5" stop-color="#fff3c4"/><stop offset="1" stop-color="#c8902f"/></linearGradient>
+      </defs>
+      <path d="M78 6 C 92 30, 104 62, 116 104 L 42 104 C 54 70, 60 40, 70 24 C 72 18, 66 14, 58 16 C 66 8, 74 4, 78 6 Z" fill="url(#hb)"/>
+      <ellipse cx="80" cy="110" rx="70" ry="16" fill="#4a3392"/>
+      <ellipse cx="80" cy="106" rx="70" ry="14" fill="url(#hb)"/>
+      <path d="M46 92 Q 80 102 114 92 L 117 104 Q 80 114 43 104 Z" fill="url(#hg)"/>
+      <path d="M86 48 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1 z" fill="#fff3c4"/>
+      <circle cx="68" cy="72" r="3" fill="#fff3c4"/><circle cx="98" cy="80" r="2.2" fill="#fff3c4"/>
+    </svg>
+    <h1 class="title"><span>Whizz</span><span class="small">Words</span></h1>
+    <div class="tiles">
+      <div class="tile">S<b>1</b></div><div class="tile">P<b>3</b></div><div class="tile">E<b>1</b></div><div class="tile">L<b>1</b></div><div class="tile">L<b>1</b></div>
+    </div>
+  </div>
+  <div id="extras"></div>
+<script>
+  const shape = new URLSearchParams(location.search).get('shape') || 'landscape';
+  document.body.className = shape;
+  // Deterministic star field.
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const stars = document.getElementById('stars');
+  for (let i = 0; i < 90; i++) {
+    const s = document.createElement('i');
+    s.style.left = `${rnd() * 100}%`; s.style.top = `${rnd() * 100}%`;
+    s.style.opacity = (0.25 + rnd() * 0.7).toFixed(2);
+    const size = 1 + rnd() * 3; s.style.width = s.style.height = `${size}px`;
+    stars.appendChild(s);
+  }
+  // Charms, a score pop and sparkles placed per shape (percent of the canvas).
+  const layouts = {
+    landscape: { charms: [['❦', 80, 20], ['◉', 86, 52], ['☄', 74, 74], ['⁂', 10, 70]], score: [62, 20, '+186'], sparks: [[30, 14], [56, 10], [90, 84], [22, 88], [52, 90]] },
+    portrait: { charms: [['❦', 6, 5], ['◉', 80, 30], ['☄', 6, 88], ['⁂', 80, 88]], score: [58, 9, '+186'], sparks: [[16, 22], [86, 14], [8, 46], [50, 95], [88, 62]] },
+    square: { charms: [['❦', 6, 6], ['◉', 80, 6], ['☄', 3, 42], ['⁂', 84, 42]], score: [68, 31, '+186'], sparks: [[30, 6], [56, 94], [12, 90], [88, 90]] },
+  }[shape];
+  const extras = document.getElementById('extras');
+  for (const [g, x, y] of layouts.charms) {
+    const c = document.createElement('div'); c.className = 'charm'; c.textContent = g;
+    c.style.left = `${x}%`; c.style.top = `${y}%`; c.style.setProperty('--c', shape === 'landscape' ? '7vmin' : '8vmin');
+    extras.appendChild(c);
+  }
+  const [sx, sy, text] = layouts.score;
+  const sc = document.createElement('div'); sc.className = 'score'; sc.textContent = text;
+  sc.style.left = `${sx}%`; sc.style.top = `${sy}%`; extras.appendChild(sc);
+  for (const [x, y] of layouts.sparks) {
+    const s = document.createElement('div'); s.className = 'spark'; s.textContent = '✦';
+    s.style.left = `${x}%`; s.style.top = `${y}%`; s.style.fontSize = `${3 + rnd() * 3}vmin`; extras.appendChild(s);
+  }
+</script>
+</body>
+</html>

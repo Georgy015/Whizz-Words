@@ -7,12 +7,22 @@ let master = null;
 let enabled = true;
 try { enabled = localStorage.getItem('whizz-sound') !== 'off'; } catch { /* storage unavailable */ }
 
+// forced mutes everything regardless of the switch: CrazyGames' site-wide
+// mute setting, or an ad playing.
+let forced = false;
+const level = () => (enabled && !forced ? 0.5 : 0);
+
 export const soundOn = () => enabled;
 
 export function setSound(on) {
   enabled = on;
   try { localStorage.setItem('whizz-sound', on ? 'on' : 'off'); } catch { /* storage unavailable */ }
-  if (master) master.gain.value = on ? 0.5 : 0;
+  if (master) master.gain.value = level();
+}
+
+export function setForcedMute(on) {
+  forced = on;
+  if (master) master.gain.value = level();
 }
 
 function audio() {
@@ -21,7 +31,7 @@ function audio() {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = enabled ? 0.5 : 0;
+    master.gain.value = level();
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') ctx.resume();
@@ -34,7 +44,7 @@ export const audioContext = () => audio();
 // One enveloped oscillator note.
 function tone(freq, { at = 0, dur = 0.15, type = 'triangle', gain = 0.25, attack = 0.005, slide = 0 } = {}) {
   const a = audio();
-  if (!a || !enabled) return;
+  if (!a || !enabled || forced) return;
   const t = a.currentTime + at;
   const osc = a.createOscillator();
   const g = a.createGain();
@@ -52,7 +62,7 @@ function tone(freq, { at = 0, dur = 0.15, type = 'triangle', gain = 0.25, attack
 // A short burst of filtered noise (whooshes and clicks).
 function noise({ at = 0, dur = 0.2, gain = 0.15, from = 400, to = 2400, q = 1 } = {}) {
   const a = audio();
-  if (!a || !enabled) return;
+  if (!a || !enabled || forced) return;
   const t = a.currentTime + at;
   const buf = a.createBuffer(1, Math.ceil(a.sampleRate * dur), a.sampleRate);
   const data = buf.getChannelData(0);
