@@ -65,7 +65,10 @@
           <button class="btn secondary hidden" id="overlay-alt"></button>
           <button class="btn primary" id="overlay-btn"></button>
         </div>
-        <button class="btn secondary small hidden sound-toggle" id="overlay-sound"></button>
+        <div class="panel-toggles hidden" id="overlay-toggles">
+          <button class="btn secondary small sound-toggle" id="overlay-music"></button>
+          <button class="btn secondary small sound-toggle" id="overlay-sound"></button>
+        </div>
       </div>
     </div>
   </div>
@@ -88,6 +91,42 @@
       <h2 id="picker-title">Boss Trials</h2>
       <p class="shop-sub">Pick a boss and play its round (target 150). You start with three practice charms: Vowel Hunter, Short &amp; Sweet and Opening Spell.</p>
       <div class="offers" id="picker-list"></div>
+    </div>
+  </div>
+
+  <div class="title-screen hidden" id="title">
+    <svg class="logo-hat" viewBox="0 0 160 150" aria-hidden="true">
+      <defs>
+        <linearGradient id="hat-body" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#b79bff"/><stop offset="1" stop-color="#5b3fb0"/>
+        </linearGradient>
+        <linearGradient id="hat-band" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#c8902f"/><stop offset=".5" stop-color="#fff3c4"/><stop offset="1" stop-color="#c8902f"/>
+        </linearGradient>
+      </defs>
+      <path d="M78 6 C 92 30, 104 62, 116 104 L 42 104 C 54 70, 60 40, 70 24 C 72 18, 66 14, 58 16 C 66 8, 74 4, 78 6 Z" fill="url(#hat-body)"/>
+      <ellipse cx="80" cy="110" rx="70" ry="16" fill="#4a3392"/>
+      <ellipse cx="80" cy="106" rx="70" ry="14" fill="url(#hat-body)"/>
+      <path d="M46 92 Q 80 102 114 92 L 117 104 Q 80 114 43 104 Z" fill="url(#hat-band)"/>
+      <path d="M86 48 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1 z" fill="#fff3c4"/>
+      <circle cx="68" cy="72" r="3" fill="#fff3c4"/>
+      <circle cx="98" cy="80" r="2.2" fill="#fff3c4"/>
+      <path d="M134 22 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 z" fill="#f2c35b"/>
+      <path d="M24 40 l1.5 4.5 4.5 1.5 -4.5 1.5 -1.5 4.5 -1.5 -4.5 -4.5 -1.5 4.5 -1.5 z" fill="#f2c35b"/>
+    </svg>
+    <h1 class="logo-text"><span>Whizz</span><span class="small">Words</span></h1>
+    <div class="title-tiles" aria-hidden="true">
+      <span class="tile">S<span class="value">1</span></span><span class="tile">P<span class="value">3</span></span><span class="tile">E<span class="value">1</span></span><span class="tile">L<span class="value">1</span></span><span class="tile">L<span class="value">1</span></span>
+    </div>
+    <p class="tagline">Spell words, collect charms and outwit the bosses.</p>
+    <div class="title-actions">
+      <button class="btn primary" id="title-play">Play</button>
+      <button class="btn secondary" id="title-help">How to play</button>
+      <div class="title-row">
+        <button class="btn secondary small sound-toggle" id="title-music"></button>
+        <button class="btn secondary small sound-toggle" id="title-sound"></button>
+      </div>
+      <p class="best-run" id="best-run"></p>
     </div>
   </div>
 

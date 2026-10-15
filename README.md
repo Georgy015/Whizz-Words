@@ -15,6 +15,9 @@ Build words from letter tiles, score `chips × mult`, and hit each round's targe
 - **15 charms**, up to 5 at once, kept for the whole run (`src/charms.js`)
 - **Bonus rounds** after rounds 3 and 6: 60 seconds of unlimited casts. 3 / 6 / 10 words earn extra casts and discards for the rest of the run.
 - **Boss rounds** on rounds 4 and 8: a random boss bends one rule (7 regular bosses), and round 8 is always the final boss, the Charm Eater. Beating a boss pays an extra $3. Play any boss on its own with `#bosses` (Boss Trials).
+- **Title screen** with logo, Play, How to play, Music/Sound switches and your best run
+- **Background music:** a lo-fi, funky loop synthesized live (no audio files). It plays only during rounds and stops on every pop-up, the shop, the title screen and when the tab is hidden.
+- **Fonts:** Cinzel Decorative for the logo and headlines, Fredoka for everything else (bundled in `assets/fonts`, SIL Open Font License)
 - **Sound and animation:** synthesized sound effects (no audio files) and a letter-by-letter scoring show with sparkles, pops and a counting score. Sound can be switched off in the pause menu; animations respect the device's reduce-motion setting.
 - **Tutorial** on first visit (replay with ?), **Start over** with ↺, **Pause** with ❚❚ (also freezes the bonus clock, and pauses automatically when you leave the tab)
 - After a win: **Continue to next round** or **Visit the shop**; in the shop you can **sell** a charm for half its price to free a slot
@@ -39,6 +42,7 @@ npm run sim        # bot plays many rounds and reports win rate per target
 | `src/charms.js` | Charm definitions, charm scoring and shop offers |
 | `src/bosses.js` | Boss definitions and how they set up a round |
 | `src/sound.js` | Sound effects, synthesized with the Web Audio API |
+| `src/music.js` | Background music: a lo-fi loop sequenced live with Web Audio |
 | `src/fx.js` | Sparkles, screen shake, floating labels and counting numbers |
 | `src/main.js` | UI, input and animations |
 | `src/dictionary.js` | Loads the word list into a `Set` |

@@ -15,6 +15,7 @@ const TRIAL_CHARMS = ['vowel-hunter', 'short-sweet', 'opening-spell'];
 const TRIAL_ROUND = 3;
 import { loadDictionary, isWord } from './dictionary.js';
 import { sfx, soundOn, setSound } from './sound.js';
+import { startMusic, stopMusic, musicOn, setMusic } from './music.js';
 import { burstFrom, screenShake, popLabel, countUp, wait, reducedMotion } from './fx.js';
 
 const $ = (id) => document.getElementById(id);
@@ -32,7 +33,10 @@ const els = {
   shop: $('shop'), shopCoins: $('shop-coins'), offers: $('offers'), shopOwned: $('shop-owned'),
   shopReroll: $('shop-reroll'), shopLeave: $('shop-leave'),
   bossBadge: $('boss-badge'), picker: $('picker'), pickerList: $('picker-list'),
-  game: $('game'), overlaySound: $('overlay-sound'),
+  game: $('game'), overlaySound: $('overlay-sound'), overlayMusic: $('overlay-music'),
+  overlayToggles: $('overlay-toggles'),
+  title: $('title'), titlePlay: $('title-play'), titleHelp: $('title-help'),
+  titleMusic: $('title-music'), titleSound: $('title-sound'), bestRun: $('best-run'),
 };
 
 let state;
@@ -461,6 +465,7 @@ function checkEnd() {
   if (state.status === 'won') {
     const bonusNext = BONUS_AFTER.includes(state.roundIndex);
     run.carry = last ? 0 : carryOver(state.score, state.target, ROUND_TARGETS[state.roundIndex + 1]);
+    if (!tutorial) recordBest(state.roundIndex + 1);
     const earned = roundCoins(state, activeCharms()) + (state.boss ? BOSS_REWARD : 0);
     run.coins += earned;
     renderCharms();
@@ -557,8 +562,8 @@ const CHEERS = { true: 'Well done!', sad: 'Bad luck!', boss: 'Boss round!', vict
 let revealTimer = null;
 function showOverlay(title, text, button, onClick, { cheer = false, alt = null, sound = false } = {}) {
   clearTimeout(revealTimer);
-  els.overlaySound.classList.toggle('hidden', !sound);
-  if (sound) renderSoundToggle();
+  els.overlayToggles.classList.toggle('hidden', !sound);
+  if (sound) renderToggles();
   if (cheer === true || cheer === 'victory') {
     sfx.win();
     setTimeout(() => burstFrom(els.overlayCheer, { count: 22, spread: 140 }), 150);
@@ -807,14 +812,71 @@ function showPause() {
   });
 }
 
-function renderSoundToggle() {
-  els.overlaySound.textContent = soundOn() ? '♪ Sound: on' : '♪ Sound: off';
-  els.overlaySound.setAttribute('aria-pressed', String(soundOn()));
+// Music and sound switches, shown on the title screen and in the pause menu.
+function renderToggles() {
+  for (const el of [els.overlayMusic, els.titleMusic]) {
+    el.textContent = musicOn() ? '♫ Music: on' : '♫ Music: off';
+    el.setAttribute('aria-pressed', String(musicOn()));
+  }
+  for (const el of [els.overlaySound, els.titleSound]) {
+    el.textContent = soundOn() ? '♪ Sound: on' : '♪ Sound: off';
+    el.setAttribute('aria-pressed', String(soundOn()));
+  }
 }
-els.overlaySound.addEventListener('click', () => {
-  setSound(!soundOn());
-  renderSoundToggle();
+for (const el of [els.overlaySound, els.titleSound]) {
+  el.addEventListener('click', () => { setSound(!soundOn()); renderToggles(); sfx.tap(); });
+}
+for (const el of [els.overlayMusic, els.titleMusic]) {
+  el.addEventListener('click', () => { setMusic(!musicOn()); renderToggles(); sfx.tap(); syncMusic(); });
+}
+
+// ---------- Music ----------
+// Music plays only while a round is on screen: any pop-up, the shop, the boss
+// list, the title screen or a hidden tab stops it, and it resumes after.
+const screens = () => [els.overlay, els.shop, els.picker, els.title];
+function syncMusic() {
+  const blocked = !state || document.hidden || screens().some((el) => !el.classList.contains('hidden'));
+  if (blocked || !musicOn()) stopMusic();
+  else startMusic();
+}
+const screenWatcher = new MutationObserver(syncMusic);
+for (const el of screens()) screenWatcher.observe(el, { attributes: true, attributeFilter: ['class'] });
+document.addEventListener('visibilitychange', syncMusic);
+
+// ---------- Title screen ----------
+const BEST_KEY = 'whizz-best';
+function bestRound() {
+  try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
+}
+function recordBest(cleared) {
+  if (cleared <= bestRound()) return;
+  try { localStorage.setItem(BEST_KEY, String(cleared)); } catch { /* storage unavailable */ }
+}
+
+function showTitle() {
+  stopTimer();
+  const best = bestRound();
+  els.bestRun.textContent = BOSS_TRIALS ? 'Boss Trials: face any boss on its own'
+    : best >= ROUND_TARGETS.length ? `Best run: all ${ROUND_TARGETS.length} rounds cleared ✦`
+      : best ? `Best run: cleared ${best} of ${ROUND_TARGETS.length} rounds` : '';
+  renderToggles();
+  els.title.classList.remove('hidden');
+  els.titlePlay.focus();
+}
+
+els.titlePlay.addEventListener('click', () => {
   sfx.tap();
+  els.title.classList.add('hidden');
+  let seen = false;
+  try { seen = localStorage.getItem('whizz-tutorial-done') === '1'; } catch { /* storage unavailable */ }
+  if (BOSS_TRIALS) startTrials();
+  else if (seen) startRun();
+  else startTutorial();
+});
+els.titleHelp.addEventListener('click', () => {
+  sfx.tap();
+  els.title.classList.add('hidden');
+  startTutorial();
 });
 els.pause.addEventListener('click', showPause);
 // Leaving the tab pauses a running bonus clock.
@@ -825,15 +887,11 @@ document.addEventListener('visibilitychange', () => {
 loadDictionary()
   .then(() => {
     els.loading.classList.add('hidden');
-    let seen = false;
-    try { seen = localStorage.getItem('whizz-tutorial-done') === '1'; } catch { /* storage unavailable */ }
-    // Playtest shortcuts: #bonus jumps to the first bonus round, #shop opens
-    // the shop with $20 before round 1.
-    if (BOSS_TRIALS) startTrials();
-    else if (location.hash === '#bonus') startBonus(BONUS_AFTER[0]);
+    // Playtest shortcuts skip the title: #bonus jumps to the first bonus round,
+    // #boss to the round 4 boss, #shop opens the shop with $20 before round 1.
+    if (location.hash === '#bonus') startBonus(BONUS_AFTER[0]);
     else if (location.hash === '#boss') { startRun(); startRound(BOSS_ROUNDS[0]); }
     else if (location.hash === '#shop') { startRun(); run.coins = 20; renderCharms(); openShop(() => startRound(0)); }
-    else if (seen) startRun();
-    else startTutorial();
+    else showTitle();
   })
   .catch((err) => { els.loading.textContent = `Could not open the spellbook: ${err.message}`; });

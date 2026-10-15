@@ -28,6 +28,9 @@ function audio() {
   return ctx;
 }
 
+// Shared with music.js, so music and effects use one audio context.
+export const audioContext = () => audio();
+
 // One enveloped oscillator note.
 function tone(freq, { at = 0, dur = 0.15, type = 'triangle', gain = 0.25, attack = 0.005, slide = 0 } = {}) {
   const a = audio();
