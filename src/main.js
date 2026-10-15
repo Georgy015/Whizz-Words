@@ -6,9 +6,8 @@ import {
 import { CHARM_SLOTS, charmById, shopOffers } from './charms.js';
 import { BOSSES, BOSS_REWARD, applyBoss, pickBosses } from './bosses.js';
 
-// Bosses are built but kept out of the main run until they've been playtested.
-// Flip BOSSES_IN_RUN to put them on rounds 4 and 8 (zero-based 3 and 7).
-const BOSSES_IN_RUN = false;
+// Rounds 4 and 8 (zero-based 3 and 7) are boss rounds; round 8 is the final boss.
+const BOSSES_IN_RUN = true;
 const BOSS_ROUNDS = [3, 7];
 // Boss Trials: a page that only plays boss rounds, picked from a list.
 const BOSS_TRIALS = window.WHIZZ_BOSS_TRIALS === true || location.hash === '#bosses';
@@ -382,13 +381,14 @@ function checkEnd() {
     const earned = roundCoins(state, activeCharms()) + (state.boss ? BOSS_REWARD : 0);
     run.coins += earned;
     renderCharms();
-    const carryText = (run.carry ? ` ${run.carry} extra points carry into the next round.` : '') + ` You earned $${earned}.`;
+    const carryText = (run.carry ? ` ${run.carry} extra points carry into the next round.` : '')
+      + ` You earned $${earned}${state.boss ? `, including $${BOSS_REWARD} for beating the boss` : ''}.`;
     const index = state.roundIndex;
     const next = bonusNext ? () => startBonus(index) : () => startRound(index + 1);
     showOverlay(
       last ? 'You are a true Whizz Words wizard!' : state.boss ? `${bossName()} is beaten!` : 'Round cleared!',
       last
-        ? `You cleared all ${ROUND_TARGETS.length} rounds. Boss rounds come next.`
+        ? `You beat ${bossName() || 'the final round'} and cleared all ${ROUND_TARGETS.length} rounds.`
         : bonusNext
           ? `You scored ${state.score} of ${state.target}.${carryText} After the shop: a ${BONUS_SECONDS}-second bonus round. Cast as many words as you can to earn extra casts and discards.`
           : `You scored ${state.score} of ${state.target}.${carryText} The next target is ${ROUND_TARGETS[state.roundIndex + 1]}.`,
@@ -402,7 +402,7 @@ function checkEnd() {
   } else if (state.status === 'lost') {
     showOverlay(
       'The spell fizzled…',
-      `You reached ${state.score} of ${state.target} in round ${state.roundIndex + 1}.`
+      `${state.boss ? `${bossName()} wins this time. ` : ''}You reached ${state.score} of ${state.target} in round ${state.roundIndex + 1}.`
         + (run.extraPlays || run.extraDiscards ? ' Your bonus rewards are lost, and the next run starts fresh.' : ''),
       'Try again',
       startRun,
@@ -598,7 +598,7 @@ const TUTORIAL_STEPS = [
   { text: '<b>X</b> and <b>Z</b> are tricky letters. Tap both, then tap <b>Discard</b> to swap them for new ones. You get 3 discards per round.', action: 'discard', tiles: ['x', 'z'] },
   { text: 'Stuck for ideas? Tap <b>Shuffle</b> to mix up your hand. Shuffling is free.', action: 'shuffle', tiles: [] },
   { text: 'Golden tiles hold two letters. Spell <b>THORN</b> with the <b>TH</b> tile. It counts as two letters, so THORN is a 5-letter word worth ×3.', action: 'cast', word: 'thorn', tiles: ['th', 'o', 'r', 'n'] },
-  { text: `That’s it! Reach each round’s target before your casts run out. Cleared rounds earn coins to spend on charms in the shop. After rounds ${BONUS_AFTER[0] + 1} and ${BONUS_AFTER[1] + 1} there’s a ${BONUS_SECONDS}-second bonus round that earns extra casts and discards.`, button: 'Start round 1', last: true },
+  { text: `That’s it! Reach each round’s target before your casts run out. Cleared rounds earn coins to spend on charms in the shop. After rounds ${BONUS_AFTER[0] + 1} and ${BONUS_AFTER[1] + 1} there’s a ${BONUS_SECONDS}-second bonus round, and rounds ${BOSS_ROUNDS[0] + 1} and ${BOSS_ROUNDS[1] + 1} are boss rounds that bend one rule.`, button: 'Start round 1', last: true },
 ];
 
 function startTutorial() {
@@ -726,6 +726,7 @@ loadDictionary()
     // the shop with $20 before round 1.
     if (BOSS_TRIALS) startTrials();
     else if (location.hash === '#bonus') startBonus(BONUS_AFTER[0]);
+    else if (location.hash === '#boss') { startRun(); startRound(BOSS_ROUNDS[0]); }
     else if (location.hash === '#shop') { startRun(); run.coins = 20; renderCharms(); openShop(() => startRound(0)); }
     else if (seen) startRun();
     else startTutorial();
