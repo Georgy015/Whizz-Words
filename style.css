@@ -417,3 +417,33 @@ html, body {
 }
 .sound-toggle[aria-pressed="false"] { opacity: .6; }
 .panel-toggles.hidden { display: none; }
+
+/* ---------- Short screens (phones in landscape) ---------- */
+/* Pop-ups never grow past the screen; long ones scroll inside. */
+.overlay .panel { max-height: calc(100% - 16px); overflow-y: auto; }
+@media (max-height: 520px) {
+  .game { gap: 6px; padding-block: 6px; grid-template-rows: auto auto 1fr auto auto; }
+  .log { display: none; }
+  .top .round { font-size: .9rem; }
+  .goal-text { font-size: .95rem; margin-bottom: 2px; }
+  .counter { padding: 2px 9px; }
+  .charm { min-height: 34px; padding: 3px 2px; }
+  .charm .name { display: none; }
+  .charm .glyph { font-size: 1.05rem; }
+  .charm.empty { min-height: 34px; }
+  .coins { padding: 4px 10px; font-size: 1rem; }
+  .spell { gap: 4px; }
+  .boss-badge { font-size: .78rem; padding: 3px 12px; }
+  .preview { font-size: 1.35rem; min-height: 1.2em; }
+  .message { font-size: .9rem; min-height: 1.2em; }
+  .actions .btn { padding-block: 9px; font-size: 1rem; }
+  .overlay { padding: 8px; }
+  .panel { padding: 16px 20px; }
+  .panel p { margin-bottom: 12px; }
+  .cheer { font-size: 2rem; margin-bottom: 4px; }
+  .offers { gap: 6px; margin-bottom: 10px; }
+  .offer { padding: 6px 10px; }
+  .shop-owned { margin-top: 10px; padding-top: 8px; gap: 4px; }
+  .coach { top: 46px; padding: 8px 14px; }
+  .coach p { font-size: .9rem; }
+}
