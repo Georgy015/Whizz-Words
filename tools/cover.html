@@ -63,19 +63,19 @@
 
   /* Landscape 16:9: hat and title left of centre, tiles below, charms around. */
   .landscape .stage { gap: 3vmin; }
-  .landscape .title { font-size: 19vmin; }
-  .landscape .tiles { --t: 13vmin; margin-top: 2vmin; }
+  .landscape .title { font-size: 24vmin; }
+  .landscape .tiles { --t: 15vmin; margin-top: 1vmin; }
   .landscape .hat { position: absolute; left: 14%; top: 18%; width: 34vmin; }
   /* Portrait 2:3 */
   .portrait .stage { gap: 5vmin; padding-top: 6vmin; }
-  .portrait .title { font-size: 20vmin; }
+  .portrait .title { font-size: 24vmin; }
   .portrait .hat { width: 46vmin; }
-  .portrait .tiles { --t: 14vmin; gap: 2vmin; }
+  .portrait .tiles { --t: 15vmin; gap: 2vmin; }
   /* Square 1:1 */
   .square .stage { gap: 4vmin; }
-  .square .title { font-size: 17vmin; }
+  .square .title { font-size: 22vmin; }
   .square .hat { width: 36vmin; }
-  .square .tiles { --t: 13vmin; }
+  .square .tiles { --t: 14vmin; }
 </style>
 </head>
 <body>
@@ -94,9 +94,10 @@
       <path d="M86 48 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1 z" fill="#fff3c4"/>
       <circle cx="68" cy="72" r="3" fill="#fff3c4"/><circle cx="98" cy="80" r="2.2" fill="#fff3c4"/>
     </svg>
-    <h1 class="title"><span>Whizz</span><span class="small">Words</span></h1>
-    <div class="tiles">
-      <div class="tile">S<b>1</b></div><div class="tile">P<b>3</b></div><div class="tile">E<b>1</b></div><div class="tile">L<b>1</b></div><div class="tile">L<b>1</b></div>
+    <!-- Only the game's title appears on covers: "Whizz", then WORDS spelled in tiles. -->
+    <h1 class="title" aria-label="Whizz Words"><span>Whizz</span></h1>
+    <div class="tiles" aria-hidden="true">
+      <div class="tile">W<b>4</b></div><div class="tile">O<b>1</b></div><div class="tile">R<b>1</b></div><div class="tile">D<b>2</b></div><div class="tile">S<b>1</b></div>
     </div>
   </div>
   <div id="extras"></div>
@@ -118,7 +119,7 @@
   const layouts = {
     landscape: { charms: [['❦', 80, 20], ['◉', 86, 52], ['☄', 74, 74], ['⁂', 10, 70]], score: [62, 20, '+186'], sparks: [[30, 14], [56, 10], [90, 84], [22, 88], [52, 90]] },
     portrait: { charms: [['❦', 6, 5], ['◉', 80, 30], ['☄', 6, 88], ['⁂', 80, 88]], score: [58, 9, '+186'], sparks: [[16, 22], [86, 14], [8, 46], [50, 95], [88, 62]] },
-    square: { charms: [['❦', 6, 6], ['◉', 80, 6], ['☄', 3, 42], ['⁂', 84, 42]], score: [68, 31, '+186'], sparks: [[30, 6], [56, 94], [12, 90], [88, 90]] },
+    square: { charms: [['❦', 6, 6], ['◉', 80, 6]], score: [68, 31, '+186'], sparks: [[30, 6], [56, 94], [12, 90], [88, 90]] },
   }[shape];
   const extras = document.getElementById('extras');
   for (const [g, x, y] of layouts.charms) {
@@ -126,9 +127,6 @@
     c.style.left = `${x}%`; c.style.top = `${y}%`; c.style.setProperty('--c', shape === 'landscape' ? '7vmin' : '8vmin');
     extras.appendChild(c);
   }
-  const [sx, sy, text] = layouts.score;
-  const sc = document.createElement('div'); sc.className = 'score'; sc.textContent = text;
-  sc.style.left = `${sx}%`; sc.style.top = `${sy}%`; extras.appendChild(sc);
   for (const [x, y] of layouts.sparks) {
     const s = document.createElement('div'); s.className = 'spark'; s.textContent = '✦';
     s.style.left = `${x}%`; s.style.top = `${y}%`; s.style.fontSize = `${3 + rnd() * 3}vmin`; extras.appendChild(s);

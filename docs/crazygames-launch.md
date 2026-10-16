@@ -13,11 +13,14 @@ game's metrics are good, CrazyGames moves it to **Full Launch**, which switches 
 | Cover 16:9 | `store/cover-landscape-1920x1080.png` | |
 | Cover 2:3 | `store/cover-portrait-800x1200.png` | |
 | Cover 1:1 | `store/cover-square-800x800.png` | |
-| Preview video | `store/preview-gameplay-1280x720.mp4` | 29 s, H.264, no sound |
+| Preview video, landscape | `store/preview-landscape-1920x1080.mp4` | 1080p 16:9, 17.8 s, silent, opens on the landscape cover |
+| Preview video, portrait | `store/preview-portrait-1080x1620.mp4` | 1080p 2:3, 15.1 s, silent, opens on the portrait cover |
 | Store text | Below | Title, descriptions, controls, tags |
 
 Covers are rendered from `tools/cover.html` with `tools/store-assets.cjs`, so they can be restyled and
-re-rendered.
+re-rendered. Per CrazyGames' rules they show no text except the title ("Whizz", with WORDS spelled in
+tiles), no borders and no store icons. The videos follow the preview rules: 15–20 s, both orientations at
+1080p, no sound, the static cover as the first frame, no black screens, no cursor and no speed-up.
 
 ## How CrazyGames sees a session
 
